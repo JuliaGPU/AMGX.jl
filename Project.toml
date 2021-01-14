@@ -3,11 +3,20 @@ uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
 authors = ["Julia Computing"]
 version = "0.1.0"
 
+[deps]
+CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
+Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+
 [compat]
-julia = "1"
+CEnum = "0.4"
+julia = "1.5"
 
 [extras]
+Defer = "6f25fe36-ecbb-5dff-aeb8-f7b50c87fb5f"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test"]
+test = ["Test", "Defer"]

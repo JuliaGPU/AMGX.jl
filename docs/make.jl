@@ -4,11 +4,11 @@ using Documenter
 makedocs(;
     modules=[AMGX],
     authors="Julia Computing",
-    repo="https://github.com/KristofferC/AMGX.jl/blob/{commit}{path}#L{line}",
+    repo="https://github.com/JuliaComputing/AMGX.jl/blob/{commit}{path}#L{line}",
     sitename="AMGX.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
-        canonical="https://KristofferC.github.io/AMGX.jl",
+        canonical="https://JuliaComputing.github.io/AMGX.jl",
         assets=String[],
     ),
     pages=[
@@ -17,5 +17,5 @@ makedocs(;
 )
 
 deploydocs(;
-    repo="github.com/KristofferC/AMGX.jl",
+    repo="github.com/JuliaComputing/AMGX.jl",
 )

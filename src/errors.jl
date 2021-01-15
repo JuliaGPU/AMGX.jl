@@ -14,7 +14,7 @@ end
 macro checked(expr)
     return quote
         v = $(esc(expr))
-        if v != AMGX_RC_OK
+        if v != API.AMGX_RC_OK
             throw(AMGXException(error_string(v)))
         end
         return nothing

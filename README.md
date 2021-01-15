@@ -9,3 +9,8 @@ The AMGX.jl package provides an interface for using NVIDIA's [AMGX](https://gith
 For installation instructions, overview and examples, see the
 [documentation](https://JuliaComputing.github.io/AMGX.jl/stable).
 
+Issues:
+
+- `!!! detected some memory leaks in the code: trying to free non-empty
+temporary device pool !!!` while running tests
+

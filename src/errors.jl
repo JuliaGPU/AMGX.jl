@@ -17,6 +17,6 @@ macro checked(expr)
         if v != API.AMGX_RC_OK
             throw(AMGXException(error_string(v)))
         end
-        return nothing
+        v
     end
 end

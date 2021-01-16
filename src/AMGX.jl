@@ -16,6 +16,20 @@ module API
     include(joinpath(libdir, "libAMGX.jl"))
 end
 
+# All AMGXObject have a `handle` field
+abstract struct AMGXObject end
+
+function destroy!(object::AMGXObject)
+    object.handle == C_NULL && return
+    # TODO, also destroy children
+    @checked c_destoy(typeof(object))(object.handle)
+    object.handle = C_NULL
+    return
+end
+
+isdestroyed(object::AMGXObject) = object.handle == C_NULL
+
+
 include("errors.jl")
 include("Mode.jl")
 include("Config.jl")

@@ -224,7 +224,7 @@ AMGX.install_signal_handler()
 AMGX.reset_signal_handler()
 ``` 
 
-## Memory management
+## Memory management and finalizing
 
 You need to explicitly free memory of every AMGX object (`Config`, `Resources`, `AMGXVector`, `AMGXMatrix`, `Solver`) created using the julia call
 `close`.
@@ -232,6 +232,13 @@ Using [Defer.jl](https://github.com/adambrewster/Defer.jl) can significantly
 increase the convenience of this.
 
 AMGX.jl contains a reference counting system so that it errors if you try to close things in the wrong order (e.g. closing the `Resources` object before the `AMGXVector` created from it is closed (destroyed))
+
+When usage of the library is done, it should be finalized with:
+
+```jl
+AMGX.finalize_plugins()
+AMGX.finalize()
+```
 
 
 ## Not implemented:

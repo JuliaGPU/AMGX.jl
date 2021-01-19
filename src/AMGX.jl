@@ -16,6 +16,7 @@ using Libdl
 using CUDA
 using JSON
 using SparseArrays
+using AMGX_jll
 
 libAMGX = ""
 
@@ -25,6 +26,8 @@ function __init__()
     amgx_dir = get(ENV, "JULIA_AMGX_PATH", nothing)
     if amgx_dir !== nothing
         set_libAMGX_path(amgx_dir)
+    else
+        set_libAMGX_path(AMGX_jll.libamgxsh)
     end
 end
 

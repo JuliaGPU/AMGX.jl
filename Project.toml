@@ -4,6 +4,7 @@ authors = ["Julia Computing"]
 version = "0.1.0"
 
 [deps]
+AMGX_jll = "bf984166-54c0-5142-8044-a3223bd2ee09"
 CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"

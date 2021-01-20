@@ -116,12 +116,8 @@ end
 inc_refcount!(x::AMGXObject) = x.ref_count[] += 1
 dec_refcount!(x::AMGXObject) = x.ref_count[] -= 1
 
-function with(f, object::AMGXObject)
-    try
-        f(object)
-    finally
-        close(object)
-    end
+function warn_not_destroyed_on_finalize(x::AMGXObject)
+    !(x.handle == C_NULL) && @async @warn("AMGX: likely memory leak: a `$(typeof(x))` was finalized without having been `close`d")
 end
 
 

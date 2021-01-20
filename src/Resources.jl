@@ -1,7 +1,13 @@
 Base.@kwdef mutable struct Resources <: AMGXObject
-    handle::API.AMGX_resources_handle = C_NULL
+    handle::API.AMGX_resources_handle = API.AMGX_resources_handle(C_NULL)
     ref_count::Threads.Atomic{Int} = Threads.Atomic{Int}(0)
     cfg::Union{Config, Nothing} = nothing
+    function Resources(handle::API.AMGX_resources_handle, ref_count::Threads.Atomic{Int},
+                       cfg::Union{Config, Nothing})
+        resources = new(handle, ref_count, cfg)
+        finalizer(warn_not_destroyed_on_finalize, resources)
+        return resources
+    end
 end
 get_api_destroy_call(::Type{Resources}) = API.AMGX_resources_destroy
 function dec_refcount_parents(resources::Resources)

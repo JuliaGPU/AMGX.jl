@@ -1,8 +1,18 @@
-# AMGX.jl 
+# AMGX.jl
+
+*AMGX in Julia*
+
+| **Build Status**                                                    |
+|:-------------------------------------------------------------------:|
+| [![][buildkite-img]][buildkite-url] [![][codecov-img]][codecov-url] |
 
 The AMGX.jl package provides an interface for using NVIDIA's [AMGX](https://github.com/NVIDIA/AMGX) library from the Julia language.
 
-This package is still a work in progress but is usable.
+[buildkite-img]: https://badge.buildkite.com/ce21dc6bf28e053c02c8c726ea0c65cc981a22ec2934e01e56.svg?branch=master
+[buildkite-url]: https://buildkite.com/julialang/amgx-dot-jl
+
+[codecov-img]: https://codecov.io/gh/JuliaGPU/AMGX.jl/branch/master/graph/badge.svg
+[codecov-url]: https://codecov.io/gh/JuliaGPU/AMGX.jl
 
 ## Installation
 
@@ -12,12 +22,11 @@ The package is installed using the Julia package manager:
 using Pkg; Pkg.install(url ="https://github.com/JuliaComputing/AMGX.jl")
 ```
 
-Currently, only prebuilt binaries are available for Linux, otherwise you need to have AMGX available
+Currently, only prebuilt binaries are available for Linux, on other operating systems you need to have AMGX available
 locally.
 
 Before using the package, reading through the [official API reference docs for
 AMGX](https://github.com/NVIDIA/AMGX/blob/main/doc/AMGX_Reference.pdf) is recommended.
-
 
 
 ## API

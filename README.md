@@ -12,7 +12,7 @@ The package is installed using the Julia package manager:
 using Pkg; Pkg.install(url ="https://github.com/JuliaComputing/AMGX.jl")
 ```
 
-Currently, there are no prebuilt binaries so you need to have AMGX available
+Currently, only prebuilt binaries are available for Linux, otherwise you need to have AMGX available
 locally.
 
 Before using the package, reading through the [official API reference docs for
@@ -25,7 +25,7 @@ AMGX](https://github.com/NVIDIA/AMGX/blob/main/doc/AMGX_Reference.pdf) is recomm
 
 ### Initialization
 
-Set the environment variable `JULIA_AMGX_PATH` to the path to the local AMGX library.
+If you do not want to use the provided prebuilt binaries, set the environment variable `JULIA_AMGX_PATH` to the path to the local AMGX library.
 
 The library can now be initialized with:
 

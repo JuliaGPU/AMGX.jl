@@ -120,6 +120,15 @@ function warn_not_destroyed_on_finalize(x::AMGXObject)
     !(x.handle == C_NULL) && @async @warn("AMGX: likely memory leak: a `$(typeof(x))` was finalized without having been `close`d")
 end
 
+function Base.show(io::IO, ::MIME"text/plain", object::AMGXObject)
+    ptr_str = object.handle == C_NULL ? "uninitialized" : "@" * sprint(show, UInt(object.handle))
+    print(io, typeof(object), " ", ptr_str)
+    object.handle == C_NULL && return
+    if hasfield(typeof(object), :mode)
+        print(io, " ", object.mode)
+    end
+end
+
 
 ############
 # Includes #

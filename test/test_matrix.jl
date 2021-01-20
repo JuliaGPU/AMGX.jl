@@ -2,6 +2,7 @@ module TestMatrix
 
 # TODO: Test `diag_dat` argument to `upload!` and `replace_coefficients!`
 
+import ..repl_output
 using AMGX, Defer, Test, JSON, CUDA, SparseArrays
 using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
 
@@ -9,6 +10,7 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
     c = @! Config("")
     r = @! Resources(c)
     m = @! AMGXMatrix(r, dDDI)
+    @test occursin("dDDI", repl_output(m))
 
     @testset "upload" begin
         AMGX.upload!(m, 
@@ -17,8 +19,9 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
             [1.0, 2.0, 3.0]
         )
         @test nnz(m) == 3
-        @test AMGX.get_size(m) == (2, (1,1))
+        @test AMGX.matrix_get_size(m) == (2, (1,1))
         @test size(m) == (2, 2)
+        @test occursin("of size 2×2 with 3 stored entries", repl_output(m))
 
         @testset "replace coefficients" begin
             # TODO: Should test this does something
@@ -48,9 +51,11 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
             blocks_flatten;
             block_dims = (2,2)
         )
-        @test AMGX.get_size(m) == (2, (2,2))
+        @test AMGX.matrix_get_size(m) == (2, (2,2))
         @test size(m) == (4, 4)
         @test nnz(m) == 12
+        @test occursin("of size 2⋅2×2⋅2 with 3 stored block entries", repl_output(m))
+
         @testset "replace coefficients" begin
             AMGX.replace_coefficients!(m, ones(Float64, length(blocks_flatten)))
             @test_throws ArgumentError AMGX.replace_coefficients!(m, ones(Float64, length(blocks_flatten)-1))

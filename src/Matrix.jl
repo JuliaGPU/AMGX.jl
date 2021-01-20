@@ -11,6 +11,20 @@ Base.@kwdef mutable struct AMGXMatrix <: AMGXObject
         return m
     end
 end
+function Base.show(io::IO, mime::MIME"text/plain", m::AMGXMatrix)
+    invoke(show, Tuple{IO, MIME"text/plain", AMGXObject}, io, mime, m)
+    m.handle == C_NULL && return
+    n, block_dims = matrix_get_size(m)
+    if n !== 0
+        nz = amgx_nnz(m)
+        if block_dims == (1, 1)
+            print(io, " of size $n×$n with $nz stored entries")
+        else
+            block_dim_x, block_dim_y = block_dims
+            print(io, " of size $n⋅$block_dim_x×$n⋅$block_dim_y with $nz stored block entries")
+        end
+    end
+end
 get_api_destroy_call(::Type{AMGXMatrix}) = API.AMGX_matrix_destroy
 function dec_refcount_parents(m::AMGXMatrix)
     dec_refcount!(m.resources)
@@ -82,18 +96,18 @@ function upload!(matrix::AMGXMatrix, cu_matrix::CUDA.CUSPARSE.CuSparseMatrixCSR)
     upload!(matrix, cu_matrix.rowPtr, cu_matrix.colVal, cu_matrix.nzVal)
 end
 
-function get_size(matrix::AMGXMatrix)
+function matrix_get_size(matrix::AMGXMatrix)
     n_ptr, block_dim_x_ptr, block_dim_y_ptr = Ref{Cint}(), Ref{Cint}(), Ref{Cint}()
     @checked API.AMGX_matrix_get_size(matrix.handle, n_ptr, block_dim_x_ptr, block_dim_y_ptr)
     return Int(n_ptr[]), (Int(block_dim_x_ptr[]), Int(block_dim_y_ptr[]))
 end
 function Base.size(matrix::AMGXMatrix)
-    n, block_dims = get_size(matrix)
+    n, block_dims = matrix_get_size(matrix)
     return n * block_dims[1], n * block_dims[2]
 end
 
 function replace_coefficients!(m::AMGXMatrix, data::VectorOrCuVector{T}, diag_data::Union{VectorOrCuVector{T}, Nothing}=nothing) where {T <: Union{Float64, Float32}}
-    n, block_dims = get_size(m)
+    n, block_dims = matrix_get_size(m)
     _amgx_nnz = amgx_nnz(m)
     if length(data) != _amgx_nnz * prod(block_dims)
         throw(ArgumentError("can not change the number of nnz entries in `replace_coefficients!`"))
@@ -125,6 +139,6 @@ function amgx_nnz(matrix)
 end
 
 function SparseArrays.nnz(matrix::AMGXMatrix)
-    _, block_dims = get_size(matrix)
+    _, block_dims = matrix_get_size(matrix)
     return amgx_nnz(matrix) * prod(block_dims)
 end

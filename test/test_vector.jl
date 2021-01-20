@@ -1,5 +1,6 @@
 module TestVector
 
+import ..repl_output
 using AMGX, Defer, Test, JSON, CUDA
 using AMGX: Config, Resources, AMGXVector, dDDI, dFFI
 
@@ -9,8 +10,10 @@ using AMGX: Config, Resources, AMGXVector, dDDI, dFFI
 
     @scope @testset "upload/download" begin
         v = @! AMGXVector(r, dDDI)
+        @test occursin("dDDI", repl_output(v))
         v_h = [1.0, 2.0, 3.0]
         AMGX.upload!(v, v_h)
+        @test occursin("of length 3", repl_output(v))
         @test length(v) == 3
         @test AMGX.download(v) == v_h
         @test Vector(v) == v_h
@@ -46,6 +49,7 @@ using AMGX: Config, Resources, AMGXVector, dDDI, dFFI
         v = @! AMGXVector(r, dDDI)
         v_h = [1.0, 2.0, 3.0, 4.0]
         AMGX.upload!(v, v_h; block_dim = 2)
+        @test occursin("of length 2⋅2", repl_output(v))
         @test length(v_h) == 4
         @test AMGX.vector_get_size(v) == (2, 2)
         v_h = [1.0, 2.0, 3.0]

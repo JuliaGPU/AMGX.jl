@@ -9,6 +9,18 @@ Base.@kwdef mutable struct AMGXVector <: AMGXObject
         return v
     end
 end
+function Base.show(io::IO, mime::MIME"text/plain", v::AMGXVector)
+    invoke(show, Tuple{IO, MIME"text/plain", AMGXObject}, io, mime, v)
+    v.handle == C_NULL && return
+    n, block_dim = vector_get_size(v)
+    if n !== 0
+        if block_dim == 1
+            print(io, " of length $n")
+        else
+            print(io, " of length $n⋅$block_dim")
+        end
+    end
+end
 get_api_destroy_call(::Type{AMGXVector}) = API.AMGX_vector_destroy
 function dec_refcount_parents(v::AMGXVector)
     dec_refcount!(v.resources)

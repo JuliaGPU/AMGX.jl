@@ -4,7 +4,7 @@ env:
 steps:
   - label: "Julia 1.5"
     plugins:
-      - JuliaCI/julia#v0.5:
+      - JuliaCI/julia#v0.6:
           version: 1.5
       - JuliaCI/julia-test#v0.3: ~
       - JuliaCI/julia-coverage#v0.3:
@@ -17,7 +17,7 @@ steps:
 
   - label: "Julia 1.6"
     plugins:
-      - JuliaCI/julia#v0.5:
+      - JuliaCI/julia#v0.6:
           version: 1.6-nightly
       - JuliaCI/julia-test#v0.3: ~
       - JuliaCI/julia-coverage#v0.3:

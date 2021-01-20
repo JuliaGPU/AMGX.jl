@@ -1,8 +1,14 @@
 Base.@kwdef mutable struct Solver <: AMGXObject
-    handle::API.AMGX_solver_handle = C_NULL
+    handle::API.AMGX_solver_handle = API.AMGX_solver_handle(C_NULL)
     resources::Union{Resources, Nothing} = nothing
     config::Union{Config, Nothing} = nothing
     bound_matrix::Union{AMGXMatrix, Nothing} = nothing
+    function Solver(handle::API.AMGX_solver_handle, resources::Union{Resources, Nothing},
+                    config::Union{Config, Nothing}, bound_matrix::Union{AMGXMatrix, Nothing})
+        solver = new(handle, resources, config, bound_matrix)
+        finalizer(warn_not_destroyed_on_finalize, solver)
+        return solver
+    end
 end
 function dec_refcount_parents(solver::Solver)
     dec_refcount!(solver.resources)

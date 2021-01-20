@@ -1,7 +1,13 @@
 Base.@kwdef mutable struct AMGXVector <: AMGXObject
-    handle::API.AMGX_vector_handle = C_NULL
+    handle::API.AMGX_vector_handle = API.AMGX_vector_handle(C_NULL)
     mode::Union{Mode, Nothing} = nothing
     resources::Union{Resources, Nothing} = nothing
+    function AMGXVector(handle::API.AMGX_vector_handle, mode::Union{Mode, Nothing},
+                       resources::Union{Resources, Nothing})
+        v = new(handle, mode, resources)
+        finalizer(warn_not_destroyed_on_finalize, v)
+        return v
+    end
 end
 get_api_destroy_call(::Type{AMGXVector}) = API.AMGX_vector_destroy
 function dec_refcount_parents(v::AMGXVector)

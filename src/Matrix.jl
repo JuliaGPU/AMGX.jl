@@ -1,9 +1,15 @@
 # TODO: Add support for uploading a CuSparseMatrixBSR
 
 Base.@kwdef mutable struct AMGXMatrix <: AMGXObject
-    handle::API.AMGX_matrix_handle = C_NULL
+    handle::API.AMGX_matrix_handle = API.AMGX_matrix_handle(C_NULL)
     mode::Union{Mode, Nothing} = nothing
     resources::Union{Resources, Nothing} = nothing
+    function AMGXMatrix(handle::API.AMGX_matrix_handle, mode::Union{Mode, Nothing},
+                       resources::Union{Resources, Nothing})
+        m = new(handle, mode, resources)
+        finalizer(warn_not_destroyed_on_finalize, m)
+        return m
+    end
 end
 get_api_destroy_call(::Type{AMGXMatrix}) = API.AMGX_matrix_destroy
 function dec_refcount_parents(m::AMGXMatrix)

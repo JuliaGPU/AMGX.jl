@@ -1,6 +1,11 @@
 Base.@kwdef mutable struct Config <: AMGXObject
-    handle::API.AMGX_config_handle = C_NULL
+    handle::API.AMGX_config_handle = API.AMGX_config_handle(C_NULL)
     ref_count::Threads.Atomic{Int} = Threads.Atomic{Int}(0)
+    function Config(handle::API.AMGX_config_handle, ref_count::Threads.Atomic{Int})
+        config = new(handle, ref_count)
+        finalizer(warn_not_destroyed_on_finalize, config)
+        return config
+    end
 end
 get_api_destroy_call(::Type{Config}) = API.AMGX_config_destroy
 dec_refcount_parents(config::Config) = nothing

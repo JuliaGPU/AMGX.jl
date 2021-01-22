@@ -19,7 +19,7 @@ The AMGX.jl package provides an interface for using NVIDIA's [AMGX](https://gith
 The package is installed using the Julia package manager:
 
 ```julia
-using Pkg; Pkg.install(url ="https://github.com/JuliaComputing/AMGX.jl")
+using Pkg; Pkg.add("AMGX")
 ```
 
 Currently, only prebuilt binaries are available for Linux, on other operating systems you need to have AMGX available

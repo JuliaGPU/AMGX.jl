@@ -1,7 +1,7 @@
 name = "AMGX"
 uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
 authors = ["Julia Computing"]
-version = "0.1.1"
+version = "0.1.2"
 
 [deps]
 AMGX_jll = "656d14af-56e4-5275-8e68-4e861d7b5043"

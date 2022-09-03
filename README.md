@@ -64,7 +64,7 @@ resources = AMGX.Resources(config)
 
 The different modes in AMGX are available as:
 
-- `AMGX.dDDI`
+- `AMGX.hDDI`
 - `AMGX.hDFI`
 - `AMGX.hFFI`
 - `AMGX.dDDI`

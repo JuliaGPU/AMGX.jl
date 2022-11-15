@@ -23,11 +23,13 @@ libAMGX = ""
 set_libAMGX_path(s::String) = (global libAMGX = s)
 
 function __init__()
-    amgx_dir = get(ENV, "JULIA_AMGX_PATH", nothing)
-    if amgx_dir !== nothing
-        set_libAMGX_path(amgx_dir)
-    else
-        set_libAMGX_path(AMGX_jll.libamgxsh)
+    if AMGX.AMGX_jll.is_available()
+        amgx_dir = get(ENV, "JULIA_AMGX_PATH", nothing)
+        if amgx_dir !== nothing
+            set_libAMGX_path(amgx_dir)
+        else
+            set_libAMGX_path(AMGX_jll.libamgxsh)
+        end
     end
 end
 

@@ -19,7 +19,11 @@ end
 Config(content::String) = create!(Config(), content)
 
 function create!(config::Config, d::Dict)
-    str = sprint(JSON.print, d)
+    str = ""
+    for (key, val) in d
+        str *= string(key, "=", val, ", ")
+    end
+    @show str
     create!(config, str)
 end
 Config(d::Dict) = create!(Config(), d)

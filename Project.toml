@@ -1,7 +1,14 @@
+authors = ["JuliaHub"]
 name = "AMGX"
 uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
-authors = ["JuliaHub"]
-version = "0.1.4"
+version = "0.2.0"
+
+[compat]
+AMGX_jll = "2.3"
+CEnum = "0.4"
+CUDA = "3, 4"
+JSON = "0.21"
+julia = "1.6"
 
 [deps]
 AMGX_jll = "656d14af-56e4-5275-8e68-4e861d7b5043"
@@ -10,12 +17,6 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JSON = "682c06a0-de6a-54ab-a142-c8b1cf79cde6"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
-
-[compat]
-CEnum = "0.4"
-CUDA = "2.2, 3, 4"
-JSON = "0.21"
-julia = "1.5"
 
 [extras]
 Defer = "6f25fe36-ecbb-5dff-aeb8-f7b50c87fb5f"

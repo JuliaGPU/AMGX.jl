@@ -6,7 +6,7 @@ version = "0.2.0"
 [compat]
 AMGX_jll = "2.3"
 CEnum = "0.4"
-CUDA = "3, 4"
+CUDA = "4"
 JSON = "0.21"
 julia = "1.6"
 

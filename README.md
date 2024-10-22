@@ -41,7 +41,6 @@ The library can now be initialized with:
 ```julia
 using AMGX
 AMGX.initialize()
-AMGX.initialize_plugins()
 ```
 
 ### `Config`

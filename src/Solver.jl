@@ -59,8 +59,7 @@ end
 function get_iterations_number(solver::Solver)
     n_ptr = Ref{Cint}()
     @checked API.AMGX_solver_get_iterations_number(solver.handle, n_ptr)
-    # for some reason AMGX returns 1 + number of iterations.
-    return Int(n_ptr[]) - 1
+    return Int(n_ptr[])
 end
 
 function get_iteration_residual(solver::Solver, iter::Int=get_iterations_number(solver), block_idx::Int=0)
@@ -73,6 +72,7 @@ end
    SUCCESS = Int(API.AMGX_SOLVE_SUCCESS)
    FAILED = Int(API.AMGX_SOLVE_FAILED)
    DIVERGED = Int(API.AMGX_SOLVE_DIVERGED)
+   NOT_CONVERGED = Int(API.AMGX_SOLVE_NOT_CONVERGED)
 end
 
 function get_status(solver::Solver)

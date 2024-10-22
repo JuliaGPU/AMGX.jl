@@ -4,9 +4,9 @@ uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
 version = "0.2.0"
 
 [compat]
-AMGX_jll = "2.3"
-CEnum = "0.4"
-CUDA = "4"
+AMGX_jll = "2.4"
+CEnum = "0.5"
+CUDA = "4,5"
 JSON = "0.21"
 julia = "1.6"
 

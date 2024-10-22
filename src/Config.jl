@@ -23,7 +23,6 @@ function create!(config::Config, d::Dict)
     for (key, val) in d
         str *= string(key, "=", val, ", ")
     end
-    @show str
     create!(config, str)
 end
 Config(d::Dict) = create!(Config(), d)

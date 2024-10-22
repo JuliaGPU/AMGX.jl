@@ -18,10 +18,14 @@ function create!(config::Config, content::String)
 end
 Config(content::String) = create!(Config(), content)
 
-function create!(config::Config, d::Dict)
-    str = ""
-    for (key, val) in d
-        str *= string(key, "=", val, ", ")
+function create!(config::Config, d::Dict; json = false)
+    if json
+        str = sprint(JSON.print, d)
+    else
+        str = ""
+        for (key, val) in d
+            str *= string(key, "=", val, ", ")
+        end
     end
     create!(config, str)
 end

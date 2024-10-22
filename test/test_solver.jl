@@ -22,7 +22,32 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         AMGX.solve!(x, s, b)
         x_h = AMGX.download(b)
         @test x_h ≈ [1.0, 2.0, 4.0]
+
+        AMGX.upload!(x, [1.0, 2.0, 3.0])
+        AMGX.solve!(x, s, b; zero_inital_guess=true)
+        x_h = AMGX.download(x)
+        @test x_h ≈ [1.0, 2.0, 4.0]
+    end
+
+    @scope @testset "solver with residuals" begin
+        # Same test as above, but this time output residuals.
+        c = @! Config(Dict("monitor_residual" => 1))
+        r = @! Resources(c)
+        M = @! AMGXMatrix(r, mode)
+        x = @! AMGXVector(r, mode)
+        b = @! AMGXVector(r, mode)
+        s = @! Solver(r, mode, c)
+
+        AMGX.upload!(M, Cint[0, 1, 2, 3], Cint[0, 1, 2], [1.0, 1.0, 1.0])
+        AMGX.upload!(x, [0.0, 0.0, 0.0])
+        AMGX.upload!(b, [1.0, 2.0, 4.0])
+
+        AMGX.setup!(s, M)
+        AMGX.solve!(x, s, b)
+        x_h = AMGX.download(b)
+        @test x_h ≈ [1.0, 2.0, 4.0]
         status = AMGX.get_status(s)
+        # Note: If we don't output
         @test status == AMGX.SUCCESS
 
         AMGX.upload!(x, [1.0, 2.0, 3.0])
@@ -67,9 +92,9 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         AMGX.upload!(b, [1.0, 2.0, 4.0])
         AMGX.setup!(s, M)
         AMGX.solve!(x, s, b)
-        @show niter = AMGX.get_iterations_number(s)
+        niter = AMGX.get_iterations_number(s)
         @test AMGX.get_iteration_residual(s) < 1e-14
-        @show niter = AMGX.get_iterations_number(s)
+        niter = AMGX.get_iterations_number(s)
         @test AMGX.get_iteration_residual(s, niter) == AMGX.get_iteration_residual(s)
     end
 end

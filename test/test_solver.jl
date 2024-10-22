@@ -47,7 +47,8 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         x_h = AMGX.download(b)
         @test x_h ≈ [1.0, 2.0, 4.0]
         status = AMGX.get_status(s)
-        # Note: If we don't output
+        # Note: If we don't set monitor_residual, the status flag does not
+        # reflect if the solution has converged or not.
         @test status == AMGX.SUCCESS
 
         AMGX.upload!(x, [1.0, 2.0, 3.0])

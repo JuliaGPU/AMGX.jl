@@ -94,8 +94,8 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         AMGX.setup!(s, M)
         AMGX.solve!(x, s, b)
         niter = AMGX.get_iterations_number(s)
+        @test niter > 0
         @test AMGX.get_iteration_residual(s) < 1e-14
-        niter = AMGX.get_iterations_number(s)
         @test AMGX.get_iteration_residual(s, niter) == AMGX.get_iteration_residual(s)
     end
 end

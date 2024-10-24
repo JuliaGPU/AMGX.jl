@@ -8,7 +8,7 @@ AMGX_jll = "2.4"
 CEnum = "0.5"
 CUDA = "4,5"
 JSON = "0.21"
-julia = "1.6"
+julia = "1.10"
 
 [deps]
 AMGX_jll = "656d14af-56e4-5275-8e68-4e861d7b5043"

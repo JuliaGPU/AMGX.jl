@@ -18,16 +18,12 @@ function create!(config::Config, content::String)
 end
 Config(content::String) = create!(Config(), content)
 
-function create!(config::Config, d::Dict; json = false)
-    if json
-        str = sprint(JSON.print, d)
-    else
-        str = ""
-        for (key, val) in d
-            str *= string(key, "=", val, ", ")
-        end
+function create!(config::Config, d::Dict)
+    buf = IOBuffer()
+    for (key, val) in d
+        write(buf, "$key=$val,")
     end
-    create!(config, str)
+    create!(config, String(take!(buf)))
 end
 Config(d::Dict) = create!(Config(), d)
 

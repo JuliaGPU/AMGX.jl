@@ -27,6 +27,13 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         AMGX.solve!(x, s, b; zero_inital_guess=true)
         x_h = AMGX.download(x)
         @test x_h ≈ [1.0, 2.0, 4.0]
+
+        # We can reuse the same sparsity structure, but change the coefficients
+        AMGX.replace_coefficients!(M, [0.1, 0.1, 0.1])
+        AMGX.resetup!(s, M)
+        AMGX.solve!(x, s, b)
+        x_h2 = AMGX.download(x)
+        @test x_h2 ≈ [10.0, 20.0, 40.0]
     end
 
     @scope @testset "solver with residuals" begin

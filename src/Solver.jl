@@ -42,6 +42,12 @@ function setup!(solver::Solver, matrix::AMGXMatrix)
     return solver
 end
 
+function resetup!(solver::Solver, matrix::AMGXMatrix)
+    solver.bound_matrix == matrix || throw(ArgumentError("Matrix is not the same as the one bound to the solver"))
+    @checked API.AMGX_solver_resetup(solver.handle, matrix.handle)
+    return solver
+end
+
 function solve!(sol::AMGXVector, solver::Solver, rhs::AMGXVector; zero_inital_guess::Bool=false)
     if solver.bound_matrix === nothing 
         error("no matrix attached to solver")

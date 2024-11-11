@@ -181,6 +181,7 @@ After a solve, the status can be retrieved using `AMGX.get_status(solver)`. It i
 - `AMGX.SUCCESS`
 - `AMGX.FAILED`
 - `AMGX.DIVERGED`
+- `AMGX.NOT_CONVERGED`
 
 The total number of iterations can be retrieved with `AMGX.get_iterations_number(solver)`.
 

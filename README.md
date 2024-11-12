@@ -70,6 +70,7 @@ The different modes in AMGX are available as:
 - `AMGX.dDFI`
 - `AMGX.dFFI`
 
+Here, d/h is short for running AMGX on device/host, and the next pair of letters refer to matrix and vector precision (F for float/Float32, D for double/Float64). Julia native inputs to the matrix and vector constructors should match that specified in the mode, e.g. `Vector{Float64}` for D and `Vector{Float32}` for F.
 
 ### `Vector`
 
@@ -147,12 +148,6 @@ These arrays can also be uploaded from `CuArrays` already residing on the GPU.
 
 Alternatively, a `CUDA.CUSPARSE.CuSparseMatrixCSR` can be directly uploaded.
 
-The non zero values can be replaced:
-
-```julia
-AMGX.replace_coefficients!(matrix, [3.0, 2.0, 1.0])
-```
-
 ### `Solver`
 
 A solver is created from a `Resources`, a `Mode`, and a `Config`:
@@ -178,10 +173,10 @@ Vector(x)
 
 After a solve, the status can be retrieved using `AMGX.get_status(solver)`. It is of type `AMGX.SolverStatus` and can be either:
 
-- `AMGX.SUCCESS`
-- `AMGX.FAILED`
-- `AMGX.DIVERGED`
-- `AMGX.NOT_CONVERGED`
+- `AMGX.SUCCESS`: Solver converged to within the tolerances.
+- `AMGX.FAILED`: Solver failed due to internal error.
+- `AMGX.DIVERGED`: Solver ran without error, but residual increased during the solution process.
+- `AMGX.NOT_CONVERGED`: Solver did not converge, but the residual was reduced.
 
 The total number of iterations can be retrieved with `AMGX.get_iterations_number(solver)`.
 
@@ -190,6 +185,18 @@ The residual for a given iteration can be retrieved with
 ```julia
 AMGX.get_iteration_residual(solver)
 AMGX.get_iteration_residual(solver, 0)
+```
+
+If the sparsity structure of the matrix is fixed, but the matrix coefficients change, the non zero values can be replaced:
+
+```julia
+AMGX.replace_coefficients!(matrix, [3.0, 2.0, 1.0])
+```
+
+If a solve was performed for `matrix` before the non zero values were updated, the setup cost can be significantly reduced for the updated matrix:
+
+```julia
+AMGX.resetup!(solver, matrix)
 ```
 
 ### Utilities

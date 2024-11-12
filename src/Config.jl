@@ -19,8 +19,11 @@ end
 Config(content::String) = create!(Config(), content)
 
 function create!(config::Config, d::Dict)
-    str = sprint(JSON.print, d)
-    create!(config, str)
+    buf = IOBuffer()
+    for (key, val) in d
+        write(buf, "$key=$val,")
+    end
+    create!(config, String(take!(buf)))
 end
 Config(d::Dict) = create!(Config(), d)
 

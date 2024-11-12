@@ -42,6 +42,12 @@ function setup!(solver::Solver, matrix::AMGXMatrix)
     return solver
 end
 
+function resetup!(solver::Solver, matrix::AMGXMatrix)
+    solver.bound_matrix == matrix || throw(ArgumentError("Matrix is not the same as the one bound to the solver"))
+    @checked API.AMGX_solver_resetup(solver.handle, matrix.handle)
+    return solver
+end
+
 function solve!(sol::AMGXVector, solver::Solver, rhs::AMGXVector; zero_inital_guess::Bool=false)
     if solver.bound_matrix === nothing 
         error("no matrix attached to solver")
@@ -59,8 +65,7 @@ end
 function get_iterations_number(solver::Solver)
     n_ptr = Ref{Cint}()
     @checked API.AMGX_solver_get_iterations_number(solver.handle, n_ptr)
-    # for some reason AMGX returns 1 + number of iterations.
-    return Int(n_ptr[]) - 1
+    return Int(n_ptr[])
 end
 
 function get_iteration_residual(solver::Solver, iter::Int=get_iterations_number(solver), block_idx::Int=0)
@@ -73,6 +78,7 @@ end
    SUCCESS = Int(API.AMGX_SOLVE_SUCCESS)
    FAILED = Int(API.AMGX_SOLVE_FAILED)
    DIVERGED = Int(API.AMGX_SOLVE_DIVERGED)
+   NOT_CONVERGED = Int(API.AMGX_SOLVE_NOT_CONVERGED)
 end
 
 function get_status(solver::Solver)

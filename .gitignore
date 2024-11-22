@@ -4,3 +4,4 @@
 *.logamgx
 /Manifest.toml
 /docs/build/
+/gen/Manifest.toml

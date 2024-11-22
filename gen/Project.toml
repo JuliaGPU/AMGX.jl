@@ -1,0 +1,8 @@
+[deps]
+AMGX_jll = "656d14af-56e4-5275-8e68-4e861d7b5043"
+Clang = "40e3b903-d033-50b4-a0cc-940c62c95e31"
+JuliaFormatter = "98e50ef6-434e-11e9-1051-2b60c6c9e899"
+
+[compat]
+AMGX_jll = "2.4"
+julia = "1.10"

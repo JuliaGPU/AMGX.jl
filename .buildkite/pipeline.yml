@@ -8,8 +8,7 @@ steps:
           - JuliaCI/julia-test#v1: ~
           - JuliaCI/julia-coverage#v1: ~
         agents:
-          queue: "juliagpu"
-          cuda: "*"
+          queue: "cuda"
         commands: |
           julia --project -e "
             using CUDA
@@ -30,8 +29,7 @@ steps:
           - JuliaCI/julia-test#v1: ~
           - JuliaCI/julia-coverage#v1: ~
         agents:
-          queue: "juliagpu"
-          cuda: "*"
+          queue: "cuda"
         timeout_in_minutes: 45
         matrix:
           setup:

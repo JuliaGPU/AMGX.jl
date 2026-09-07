@@ -4,8 +4,8 @@ Base.@kwdef mutable struct Solver <: AMGXObject
     config::Union{Config, Nothing} = nothing
     mode::Union{Mode, Nothing} = nothing
     bound_matrix::Union{AMGXMatrix, Nothing} = nothing
-    function Solver(handle::API.AMGX_solver_handle, resources::Union{Resources, Nothing}, mode::Union{Mode, Nothing},
-                    config::Union{Config, Nothing}, bound_matrix::Union{AMGXMatrix, Nothing})
+    function Solver(handle::API.AMGX_solver_handle, resources::Union{Resources, Nothing}, config::Union{Config, Nothing},
+                    mode::Union{Mode, Nothing}, bound_matrix::Union{AMGXMatrix, Nothing})
         solver = new(handle, resources, config, mode, bound_matrix)
         finalizer(warn_not_destroyed_on_finalize, solver)
         return solver
@@ -86,4 +86,3 @@ function get_status(solver::Solver)
     @checked API.AMGX_solver_get_status(solver.handle, status_ptr)
     return SolverStatus(Int(status_ptr[]))
 end
-

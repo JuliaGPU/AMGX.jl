@@ -33,6 +33,14 @@ using AMGX, Test, Defer
         AMGX.register_print_callback(x -> (result_print = x; nothing))
         c = @! AMGX.Config("")
         @test !isempty(result_print)
+
+        # The `CFunction` handed to AMGX must stay reachable from Julia: it owns
+        # the trampoline AMGX calls, and freeing it leaves AMGX with a dangling
+        # pointer that segfaults on the next library print (e.g. during
+        # `AMGX.finalize()`).
+        @test AMGX._print_callback[] !== nothing
+        GC.gc(); GC.gc()
+        @test AMGX._print_callback[] !== nothing
     end
 
     @testset "pin / unpin" begin

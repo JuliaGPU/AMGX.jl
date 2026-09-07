@@ -120,6 +120,7 @@ end
 # registered.
 const _print_callback = Ref{Any}(nothing)
 
+# This can be set before initializing the library
 """
     register_print_callback(f)
 
@@ -131,7 +132,6 @@ AMGX.register_print_callback(_ -> nothing)          # silence AMGX
 AMGX.register_print_callback(s -> print(stdout, s)) # restore
 ```
 """
-# This can be set before initializing the library
 function register_print_callback(f)
     run_f(str::Cstring, _::Cint) = f(unsafe_string(str))
     f_cfunc = @cfunction($run_f, Cvoid, (Cstring, Cint))

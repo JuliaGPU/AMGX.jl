@@ -19,6 +19,7 @@ steps:
             julia:
               - "1.10"
               - "1.11"
+              - "1.12"
 
   - group: "CUDA"
     steps:

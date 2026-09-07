@@ -93,7 +93,12 @@ function upload!(m::AMGXMatrix, row_ptrs::VectorOrCuVector{Cint}, col_indices::V
 end
 
 function upload!(matrix::AMGXMatrix, cu_matrix::CUDA.CUSPARSE.CuSparseMatrixCSR)
-    upload!(matrix, cu_matrix.rowPtr, cu_matrix.colVal, cu_matrix.nzVal)
+    # CUDA.jl stores one-based CSR indices; AMGX requires zero-based indices.
+    row_ptrs = cu_matrix.rowPtr .- Cint(1)
+    col_indices = cu_matrix.colVal .- Cint(1)
+    # AMGX uses its own stream, so finish the index conversion before uploading.
+    CUDA.synchronize()
+    upload!(matrix, row_ptrs, col_indices, cu_matrix.nzVal)
 end
 
 function matrix_get_size(matrix::AMGXMatrix)

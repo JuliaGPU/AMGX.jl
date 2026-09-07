@@ -90,11 +90,23 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
         @test nnz(m) == 3
     end
 
-    @testset "upload CUDA sparse matrix" begin
-        c = CUDA.CUSPARSE.CuSparseMatrixCSR(sprand(Float64, 10, 10, 0.5))
+    @scope @testset "upload CUDA sparse matrix" begin
+        host_matrix = sparse([4.0 1.0 0.0; 0.0 3.0 2.0; 1.0 0.0 5.0])
+        c = CUDA.CUSPARSE.CuSparseMatrixCSR(host_matrix)
+        row_ptrs, col_indices = Array(c.rowPtr), Array(c.colVal)
         AMGX.upload!(m, c)
         @test nnz(m) == nnz(c)
         @test size(m) == size(c)
+        @test Array(c.rowPtr) == row_ptrs
+        @test Array(c.colVal) == col_indices
+
+        x = @! AMGX.AMGXVector(r, dDDI)
+        y = @! AMGX.AMGXVector(r, dDDI)
+        values = [1.0, 2.0, 3.0]
+        AMGX.upload!(x, values)
+        AMGX.set_zero!(y, 3)
+        AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(m.handle, x.handle, y.handle)
+        @test Vector(y) ≈ host_matrix * values
     end
 end
 

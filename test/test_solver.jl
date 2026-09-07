@@ -1,6 +1,6 @@
 module TestSolver
 
-using AMGX, Defer, Test, JSON, CUDA, SparseArrays
+using AMGX, Defer, Test, CUDA, SparseArrays
 using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
 
 @scope @testset "Solver" begin

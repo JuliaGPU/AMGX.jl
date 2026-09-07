@@ -53,11 +53,31 @@ config = AMGX.Config(Dict("monitor_residual" => 1, "max_iters" => 10, "store_res
 
 ### `Resources`
 
-An AMGX `Resources` object is created from an AMGX `Config`. Currently, only simple resources are wrapped:
+An AMGX `Resources` object is created from an AMGX `Config`:
 
 ```julia
 resources = AMGX.Resources(config)
 ```
+
+By default AMGX picks the device itself, which is the current device for the
+calling thread. To pin the resources to a particular GPU, pass `device_id` — a
+zero-based index using the same numbering as CUDA:
+
+```julia
+resources = AMGX.Resources(config; device_id=1)
+```
+
+Note that this only moves AMGX. Data uploaded from `CuArray`s is allocated on
+CUDA.jl's *current* device, so uploading device arrays into resources bound to a
+different device fails with `CUDA kernel launch error`. Point CUDA.jl at the same
+device first:
+
+```julia
+CUDA.device!(1)
+resources = AMGX.Resources(config; device_id=1)
+```
+
+Uploads from ordinary host arrays are copied by AMGX itself and are unaffected.
 
 ### `Mode`
 
@@ -269,7 +289,6 @@ The following functions from the C-API are not yet implemented:
 - `AMGX_write_system_distributed`
 - `AMGX_config_create_from_file`
 - `AMGX_config_get_default_number_of_rings`
-- `AMGX_resources_create` (only simple is currently wrapped)
 - `AMGX_matrix_upload_all_global`
 - `AMGX_matrix_comm_from_maps`
 - `AMGX_matrix_comm_from_maps_one_ring`

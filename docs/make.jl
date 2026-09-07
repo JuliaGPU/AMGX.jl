@@ -1,5 +1,6 @@
 using Documenter
 using AMGX
+using CUDA
 
 makedocs(;
     sitename = "AMGX.jl",
@@ -16,12 +17,14 @@ makedocs(;
             "Vectors and matrices" => "arrays.md",
             "Solving" => "solving.md",
         ],
+        "Preconditioning" => "preconditioner.md",
         "Memory management" => "memory.md",
         "Utilities" => "utilities.md",
         "API reference" => "api.md",
     ],
-    # The examples need a GPU, so they are not run as doctests.
-    doctest = false,
+    # The doctests drive a real solver, so they can only run where a GPU is
+    # available. On CPU-only CI they are skipped rather than failing.
+    doctest = CUDA.functional(),
     checkdocs = :exports,
 )
 

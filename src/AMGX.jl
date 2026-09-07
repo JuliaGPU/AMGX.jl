@@ -14,6 +14,7 @@ module AMGX
 
 using Libdl 
 using CUDA
+using LinearAlgebra
 using SparseArrays
 using AMGX_jll
 
@@ -120,5 +121,6 @@ include("Resources.jl")
 include("Vector.jl")
 include("Matrix.jl")
 include("Solver.jl")
+include("Preconditioner.jl")
 
 end # module

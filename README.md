@@ -67,7 +67,7 @@ checked.
 ## Documentation
 
 Full documentation is at
-[juliagpu.github.io/AMGX.jl](https://juliagpu.github.io/AMGX.jl/stable/), covering
+[juliagpu.github.io/AMGX.jl](https://juliagpu.github.io/AMGX.jl/dev/), covering
 configuration, vectors and matrices, solving, memory management, the utility
 functions, and the complete API reference.
 

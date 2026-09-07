@@ -11,7 +11,7 @@ Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
-AMGX_jll = "2.4"
+AMGX_jll = "2.5"
 CEnum = "0.5"
 CUDA = "5,6"
 julia = "1.10"

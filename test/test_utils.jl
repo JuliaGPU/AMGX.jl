@@ -31,7 +31,10 @@ using AMGX, Test, Defer
     @scope @testset "print callback" begin
         result_print = ""
         AMGX.register_print_callback(x -> (result_print = x; nothing))
-        c = @! AMGX.Config("")
+        # An unknown parameter is reported through the print callback. Building
+        # a config from an empty string used to print too, but AMGX has been
+        # silent about that since 2.5.
+        @test_throws AMGX.AMGXException AMGX.Config("bogus_parameter=1")
         @test !isempty(result_print)
 
         # The `CFunction` handed to AMGX must stay reachable from Julia: it owns

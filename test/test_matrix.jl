@@ -1,6 +1,6 @@
 module TestMatrix
 
-# TODO: Test `diag_dat` argument to `upload!` and `replace_coefficients!`
+# TODO: Test the `diag_data` argument to `replace_coefficients!`.
 
 import ..repl_output
 using AMGX, Defer, Test, CUDA, SparseArrays
@@ -60,6 +60,34 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
             AMGX.replace_coefficients!(m, ones(Float64, length(blocks_flatten)))
             @test_throws ArgumentError AMGX.replace_coefficients!(m, ones(Float64, length(blocks_flatten)-1))
             @test_throws ArgumentError AMGX.replace_coefficients!(m, Float32.(blocks_flatten))
+        end
+    end
+
+    @scope @testset "separate diagonal upload" begin
+        for block_dim in (1, 2), storage in (identity, CuArray)
+            matrix = @! AMGXMatrix(r, dDDI)
+            x = @! AMGX.AMGXVector(r, dDDI)
+            y = @! AMGX.AMGXVector(r, dDDI)
+            block_dims = (block_dim, block_dim)
+            # Two block rows with dense off-diagonal blocks of ones and
+            # dense diagonal blocks of twos.
+            data = storage(ones(2 * block_dim^2))
+            diagonal = storage(fill(2.0, 2 * block_dim^2))
+            rows, cols = storage(Cint[0, 1, 2]), storage(Cint[1, 0])
+            @test AMGX.upload!(matrix, rows, cols, data; block_dims, diag_data=diagonal) === matrix
+            @test_throws ArgumentError AMGX.upload!(matrix, rows, cols, data;
+                block_dims, diag_data=storage(ones(2 * block_dim^2 - 1)))
+            @test_throws ArgumentError AMGX.upload!(matrix, rows, cols, data;
+                block_dims, diag_data=storage(ones(2 * block_dim^2 + 1)))
+
+            values = collect(1.0:2 * block_dim)
+            AMGX.upload!(x, values; block_dim)
+            AMGX.set_zero!(y, 2; block_dim)
+            AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(matrix.handle, x.handle, y.handle)
+            first_sum, second_sum = sum(values[1:block_dim]), sum(values[block_dim+1:end])
+            expected = vcat(fill(2 * first_sum + second_sum, block_dim),
+                            fill(first_sum + 2 * second_sum, block_dim))
+            @test Vector(y) ≈ expected
         end
     end
 

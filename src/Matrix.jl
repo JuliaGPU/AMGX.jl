@@ -81,7 +81,7 @@ function upload!(m::AMGXMatrix, row_ptrs::VectorOrCuVector{Cint}, col_indices::V
         end
     end
     if diag_data !== nothing
-        if length(diag_dat) != n * prod(block_dims)
+        if length(diag_data) != n * prod(block_dims)
             throw(ArgumentError("length of `diag_data` ($(length(diag_data))) is not equal to number of elements on diagonal"))
         end
     end

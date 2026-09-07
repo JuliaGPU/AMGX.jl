@@ -63,10 +63,17 @@ end
 # Print callback #
 ##################
 
+# The closure `@cfunction` below allocates a trampoline that is freed when the
+# returned `CFunction` is garbage collected. AMGX keeps calling the raw pointer
+# after that, so we have to keep the object alive for as long as it is
+# registered.
+const _print_callback = Ref{Any}(nothing)
+
 # This can be set before initializing the library
 function register_print_callback(f)
     run_f(str::Cstring, _::Cint) = f(unsafe_string(str))
-    f_cfunc = @cfunction($run_f, Cvoid, (Cstring, Cint)) 
+    f_cfunc = @cfunction($run_f, Cvoid, (Cstring, Cint))
+    _print_callback[] = f_cfunc
     @checked API.AMGX_register_print_callback(f_cfunc)
 end
 

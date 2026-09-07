@@ -108,4 +108,3 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
 end
 
 end # module
-

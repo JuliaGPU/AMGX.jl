@@ -81,7 +81,7 @@ function upload!(m::AMGXMatrix, row_ptrs::VectorOrCuVector{Cint}, col_indices::V
         end
     end
     if diag_data !== nothing
-        if length(diag_dat) != n * prod(block_dims)
+        if length(diag_data) != n * prod(block_dims)
             throw(ArgumentError("length of `diag_data` ($(length(diag_data))) is not equal to number of elements on diagonal"))
         end
     end
@@ -93,7 +93,12 @@ function upload!(m::AMGXMatrix, row_ptrs::VectorOrCuVector{Cint}, col_indices::V
 end
 
 function upload!(matrix::AMGXMatrix, cu_matrix::CUDA.CUSPARSE.CuSparseMatrixCSR)
-    upload!(matrix, cu_matrix.rowPtr, cu_matrix.colVal, cu_matrix.nzVal)
+    # CUDA.jl stores one-based CSR indices; AMGX requires zero-based indices.
+    row_ptrs = cu_matrix.rowPtr .- Cint(1)
+    col_indices = cu_matrix.colVal .- Cint(1)
+    # AMGX uses its own stream, so finish the index conversion before uploading.
+    CUDA.synchronize()
+    upload!(matrix, row_ptrs, col_indices, cu_matrix.nzVal)
 end
 
 function matrix_get_size(matrix::AMGXMatrix)
@@ -116,10 +121,13 @@ function replace_coefficients!(m::AMGXMatrix, data::VectorOrCuVector{T}, diag_da
     if mT != T
         throw(ArgumentError("inconsistent AMGX matrix mode ($mT) with element type of upload ($T)"))
     end
-        GC.@preserve data diag_data begin
-            diag_data_ptr = diag_data === nothing ? Ptr{T}(C_NULL) : pointer(diag_data)
-            replace_coefficients!(m, n, _amgx_nnz, pointer(data), diag_data_ptr)
-        end
+    if diag_data !== nothing && length(diag_data) != n * prod(block_dims)
+        throw(ArgumentError("length of `diag_data` ($(length(diag_data))) is not equal to number of elements on diagonal"))
+    end
+    GC.@preserve data diag_data begin
+        diag_data_ptr = diag_data === nothing ? Ptr{T}(C_NULL) : pointer(diag_data)
+        replace_coefficients!(m, n, _amgx_nnz, pointer(data), diag_data_ptr)
+    end
     return m
 end
 

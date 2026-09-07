@@ -2,8 +2,8 @@
 For each mode, the first letter h or d specifies whether the matrix
 data (and subsequent linear solver algorithms) will run on the host or
 device. The second D or F specifies the precision (double or float) of
-the Matrix data. The third D or F specifies the precision (double or float) of
-any Vector (including right-handside or unknown vectors). The last I specifies
+any Vector (including right-hand-side or unknown vectors). The third D or F
+specifies the precision of the Matrix data. The last I specifies
 that 32-bit int types are used for all indices. Future versions of AMGX may
 support additional precisions or mixed precision modes
 =#
@@ -39,6 +39,5 @@ function _type(c::Char)
     error("unexpected char '$c'")
 end
 
-vector_type(m::Mode) = _type(string(m)[3])
-matrix_type(m::Mode) = _type(string(m)[2])
-
+vector_type(m::Mode) = _type(string(m)[2])
+matrix_type(m::Mode) = _type(string(m)[3])

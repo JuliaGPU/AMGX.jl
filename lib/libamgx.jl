@@ -187,22 +187,22 @@ function AMGX_get_build_info_strings(version, date, time)
                                                time::Ptr{Cstring})::AMGX_RC
 end
 
-# no prototype is found for this function at amgx_c.h:188:18, please use with caution
+# no prototype is found for this function at amgx_c.h:165:18, please use with caution
 function AMGX_initialize()
     @ccall libAMGX.AMGX_initialize()::AMGX_RC
 end
 
-# no prototype is found for this function at amgx_c.h:190:18, please use with caution
+# no prototype is found for this function at amgx_c.h:167:18, please use with caution
 function AMGX_initialize_plugins()
     @ccall libAMGX.AMGX_initialize_plugins()::AMGX_RC
 end
 
-# no prototype is found for this function at amgx_c.h:192:18, please use with caution
+# no prototype is found for this function at amgx_c.h:169:18, please use with caution
 function AMGX_finalize()
     @ccall libAMGX.AMGX_finalize()::AMGX_RC
 end
 
-# no prototype is found for this function at amgx_c.h:194:18, please use with caution
+# no prototype is found for this function at amgx_c.h:171:18, please use with caution
 function AMGX_finalize_plugins()
     @ccall libAMGX.AMGX_finalize_plugins()::AMGX_RC
 end
@@ -215,12 +215,12 @@ function AMGX_unpin_memory(ptr)
     @ccall libAMGX.AMGX_unpin_memory(ptr::Ptr{Cvoid})::AMGX_RC
 end
 
-# no prototype is found for this function at amgx_c.h:208:18, please use with caution
+# no prototype is found for this function at amgx_c.h:185:18, please use with caution
 function AMGX_install_signal_handler()
     @ccall libAMGX.AMGX_install_signal_handler()::AMGX_RC
 end
 
-# no prototype is found for this function at amgx_c.h:210:18, please use with caution
+# no prototype is found for this function at amgx_c.h:187:18, please use with caution
 function AMGX_reset_signal_handler()
     @ccall libAMGX.AMGX_reset_signal_handler()::AMGX_RC
 end
@@ -625,6 +625,11 @@ function AMGX_matrix_check_symmetry(mtx, structurally_symmetric, symmetric)
     @ccall libAMGX.AMGX_matrix_check_symmetry(mtx::AMGX_matrix_handle,
                                               structurally_symmetric::Ptr{Cint},
                                               symmetric::Ptr{Cint})::AMGX_RC
+end
+
+function AMGX_matrix_check_diag_dominant(mtx, diag_dominant)
+    @ccall libAMGX.AMGX_matrix_check_diag_dominant(mtx::AMGX_matrix_handle,
+                                                   diag_dominant::Ptr{Cint})::AMGX_RC
 end
 
 function AMGX_solver_register_print_callback(func)

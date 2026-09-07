@@ -1,7 +1,7 @@
 module TestVector
 
 import ..repl_output
-using AMGX, Defer, Test, JSON, CUDA
+using AMGX, Defer, Test, CUDA
 using AMGX: Config, Resources, AMGXVector, dDDI, dFFI
 
 @scope @testset "Vector" begin

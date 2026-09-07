@@ -14,7 +14,6 @@ module AMGX
 
 using Libdl 
 using CUDA
-using JSON
 using SparseArrays
 using AMGX_jll
 

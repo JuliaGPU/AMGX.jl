@@ -3,7 +3,7 @@ module TestMatrix
 # TODO: Test `diag_dat` argument to `upload!` and `replace_coefficients!`
 
 import ..repl_output
-using AMGX, Defer, Test, JSON, CUDA, SparseArrays
+using AMGX, Defer, Test, CUDA, SparseArrays
 using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
 
 @scope @testset "Matrix" begin

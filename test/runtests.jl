@@ -1,6 +1,7 @@
 using AMGX
 
 include("test_mode.jl")
+include("test_close.jl")
 
 repl_output(x) = sprint((io, x) -> show(io, MIME("text/plain"), x), x)
 

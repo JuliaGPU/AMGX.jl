@@ -69,9 +69,9 @@ function Base.close(object::T) where T <: AMGXObject
             throw(RefCountError(T, refs))
         end
     end
-    dec_refcount_parents(object)
     destroy = get_api_destroy_call(T)
     @checked destroy(object.handle)
+    dec_refcount_parents(object)
     object.handle = C_NULL
     return
 end

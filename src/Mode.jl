@@ -8,6 +8,30 @@ that 32-bit int types are used for all indices. Future versions of AMGX may
 support additional precisions or mixed precision modes
 =#
 
+"""
+    Mode
+
+Selects where AMGX runs and at what precision. The available modes are `hDDI`,
+`hDFI`, `hFFI`, `dDDI`, `dDFI` and `dFFI`, read as four characters:
+
+| position | meaning |
+|:--|:--|
+| 1 | `h` on the host, `d` on the device |
+| 2 | precision of vectors — `D` for `Float64`, `F` for `Float32` |
+| 3 | precision of matrix coefficients — `D` or `F` |
+| 4 | `I`, 32-bit integer indices (`Cint`) |
+
+So `dDDI` runs on the GPU with `Float64` throughout, while `dDFI` keeps `Float64`
+vectors alongside `Float32` matrix coefficients.
+
+Julia arrays passed to [`upload!`](@ref) must match the precision the mode
+declares. Use [`vector_type`](@ref) and [`matrix_type`](@ref) to obtain them.
+
+!!! note
+    Upstream AMGX does not support mixed-precision GPU *solves* on CUDA 10.1 or
+    later. Use `dDDI` or `dFFI` for solving; `dDFI` still supports uploads and
+    downloads.
+"""
 @enum Mode begin
     hDDI = Int(API.AMGX_mode_hDDI)
     hDFI = Int(API.AMGX_mode_hDFI)
@@ -39,5 +63,18 @@ function _type(c::Char)
     error("unexpected char '$c'")
 end
 
+"""
+    vector_type(m::Mode)
+
+The Julia element type AMGX expects for vectors in mode `m`, e.g. `Float64` for
+`dDDI`.
+"""
 vector_type(m::Mode) = _type(string(m)[2])
+
+"""
+    matrix_type(m::Mode)
+
+The Julia element type AMGX expects for matrix coefficients in mode `m`, e.g.
+`Float32` for `dDFI`.
+"""
 matrix_type(m::Mode) = _type(string(m)[3])

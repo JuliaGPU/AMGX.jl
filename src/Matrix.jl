@@ -1,5 +1,21 @@
 # TODO: Add support for uploading a CuSparseMatrixBSR
 
+"""
+    AMGXMatrix(resources::Resources, mode::Mode)
+
+A sparse matrix in AMGX, stored in **CSR** format — note that Julia's
+`SparseMatrixCSC` is CSC, so a transpose or conversion is needed when going from
+one to the other.
+
+Created empty; fill it with [`upload!`](@ref).
+
+```julia
+matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
+AMGX.upload!(matrix, CUDA.CUSPARSE.CuSparseMatrixCSR(A))
+```
+
+Must be freed with `close` before the [`Resources`](@ref) it was created from.
+"""
 Base.@kwdef mutable struct AMGXMatrix <: AMGXObject
     handle::API.AMGX_matrix_handle = API.AMGX_matrix_handle(C_NULL)
     mode::Union{Mode, Nothing} = nothing
@@ -63,6 +79,25 @@ function upload!(m::AMGXMatrix, n::Int, nnz::Int, row_ptrs_ptr::PtrOrCuPtrUnion{
 end
 
 # Note: Data within the block is assumed to be arranged in row-major scanline order.
+"""
+    upload!(m::AMGXMatrix, row_ptrs, col_indices, data; block_dims=(1,1), diag_data=nothing)
+    upload!(m::AMGXMatrix, A::CUDA.CUSPARSE.CuSparseMatrixCSR)
+
+Copy a CSR matrix into `m`.
+
+`row_ptrs` and `col_indices` are **zero-based** `Cint` arrays, as AMGX expects —
+not Julia's one-based indexing. `data` holds the non-zero values, and its element
+type must match the matrix precision of the [`Mode`](@ref). All three may live on
+the host or on the device.
+
+`block_dims` gives the block size for block systems. `diag_data`, if given, holds
+the diagonal separately from the CSR arrays, with `n * block_dimx * block_dimy`
+entries in AoS layout; pass `nothing` when the diagonal is already part of the
+matrix.
+
+A `CuSparseMatrixCSR` can be uploaded directly, which is usually the simplest
+route from Julia.
+"""
 function upload!(m::AMGXMatrix, row_ptrs::VectorOrCuVector{Cint}, col_indices::VectorOrCuVector{Cint},
                  data::VectorOrCuVector{T}; block_dims::Tuple{Int, Int}=(1,1),
                  diag_data::Union{VectorOrCuVector{T}, Nothing}=nothing) where {T <: Union{Float64, Float32}}
@@ -106,11 +141,25 @@ function matrix_get_size(matrix::AMGXMatrix)
     @checked API.AMGX_matrix_get_size(matrix.handle, n_ptr, block_dim_x_ptr, block_dim_y_ptr)
     return Int(n_ptr[]), (Int(block_dim_x_ptr[]), Int(block_dim_y_ptr[]))
 end
+"""
+    size(matrix::AMGXMatrix)
+
+Dimensions of `matrix` in scalar entries, i.e. block rows times block dimensions.
+"""
 function Base.size(matrix::AMGXMatrix)
     n, block_dims = matrix_get_size(matrix)
     return n * block_dims[1], n * block_dims[2]
 end
 
+"""
+    replace_coefficients!(m::AMGXMatrix, data; diag_data=nothing)
+
+Replace the non-zero values of `m`, keeping its sparsity structure. `data` must
+have exactly as many entries as the matrix has non-zeros.
+
+Pair this with [`resetup!`](@ref) to re-solve with new coefficients without
+paying for a full [`setup!`](@ref).
+"""
 function replace_coefficients!(m::AMGXMatrix, data::VectorOrCuVector{T}, diag_data::Union{VectorOrCuVector{T}, Nothing}=nothing) where {T <: Union{Float64, Float32}}
     n, block_dims = matrix_get_size(m)
     _amgx_nnz = amgx_nnz(m)
@@ -146,6 +195,11 @@ function amgx_nnz(matrix)
     return Int(nnz_ptr[])
 end
 
+"""
+    nnz(matrix::AMGXMatrix)
+
+Number of stored non-zero scalar entries.
+"""
 function SparseArrays.nnz(matrix::AMGXMatrix)
     _, block_dims = matrix_get_size(matrix)
     return amgx_nnz(matrix) * prod(block_dims)

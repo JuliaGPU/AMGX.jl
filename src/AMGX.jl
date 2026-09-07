@@ -60,6 +60,17 @@ struct RefCountError <: Exception
 end
 Base.showerror(io::IO, err::RefCountError) =
     print(io, "an AMGXObject of type `$(err.typ)` was attempted to be closed with a non-zero ref count ($(err.n))")
+"""
+    close(object)
+
+Destroy an AMGX object — a [`Config`](@ref), [`Resources`](@ref),
+[`AMGXVector`](@ref), [`AMGXMatrix`](@ref) or [`Solver`](@ref).
+
+AMGX objects are not garbage collected, so each must be closed explicitly.
+Ordering matters: an object cannot be closed while others created from it are
+still alive, and doing so raises a `RefCountError`. [Defer.jl](https://github.com/adambrewster/Defer.jl)
+makes this considerably less tedious.
+"""
 function Base.close(object::T) where T <: AMGXObject
     object.handle == C_NULL && return
     if hasfield(T, :ref_count)

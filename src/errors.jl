@@ -1,7 +1,18 @@
+"""
+    AMGXException
+
+Raised when an AMGX C call returns anything other than success. The message is
+AMGX's own description of the error code.
+"""
 struct AMGXException <: Exception
     e::String
 end
 
+"""
+    error_string(err_code)
+
+AMGX's human-readable description of an `AMGX_RC` return code.
+"""
 function error_string(err_code)
     buf = zeros(UInt8, 1024)
     GC.@preserve buf begin

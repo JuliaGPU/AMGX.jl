@@ -4,7 +4,7 @@
 A dense vector living wherever `mode` says — on the device for the `d*` modes.
 
 Created empty; fill it with [`upload!`](@ref) or [`set_zero!`](@ref), and read it
-back with `Vector`, `Array`, `CuVector` or [`copy!`](@ref).
+back with `Vector`, `Array`, `CuVector` or `copy!`.
 
 ```julia
 v = AMGX.AMGXVector(resources, AMGX.dDDI)

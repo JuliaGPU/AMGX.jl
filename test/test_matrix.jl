@@ -1,7 +1,5 @@
 module TestMatrix
 
-# TODO: Test the `diag_data` argument to `replace_coefficients!`.
-
 import ..repl_output
 using AMGX, Defer, Test, CUDA, SparseArrays
 using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
@@ -88,6 +86,18 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
             expected = vcat(fill(2 * first_sum + second_sum, block_dim),
                             fill(first_sum + 2 * second_sum, block_dim))
             @test Vector(y) ≈ expected
+
+            @testset "replace separate diagonal" begin
+                for count in (0, 2 * block_dim^2 - 1, 2 * block_dim^2 + 1)
+                    @test_throws ArgumentError AMGX.replace_coefficients!(matrix, data, storage(ones(count)))
+                end
+                diagonal = storage(fill(3.0, 2 * block_dim^2))
+                @test AMGX.replace_coefficients!(matrix, data, diagonal) === matrix
+                AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(matrix.handle, x.handle, y.handle)
+                expected = vcat(fill(3 * first_sum + second_sum, block_dim),
+                                fill(first_sum + 3 * second_sum, block_dim))
+                @test Vector(y) ≈ expected
+            end
         end
     end
 

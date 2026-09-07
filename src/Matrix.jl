@@ -121,10 +121,13 @@ function replace_coefficients!(m::AMGXMatrix, data::VectorOrCuVector{T}, diag_da
     if mT != T
         throw(ArgumentError("inconsistent AMGX matrix mode ($mT) with element type of upload ($T)"))
     end
-        GC.@preserve data diag_data begin
-            diag_data_ptr = diag_data === nothing ? Ptr{T}(C_NULL) : pointer(diag_data)
-            replace_coefficients!(m, n, _amgx_nnz, pointer(data), diag_data_ptr)
-        end
+    if diag_data !== nothing && length(diag_data) != n * prod(block_dims)
+        throw(ArgumentError("length of `diag_data` ($(length(diag_data))) is not equal to number of elements on diagonal"))
+    end
+    GC.@preserve data diag_data begin
+        diag_data_ptr = diag_data === nothing ? Ptr{T}(C_NULL) : pointer(diag_data)
+        replace_coefficients!(m, n, _amgx_nnz, pointer(data), diag_data_ptr)
+    end
     return m
 end
 

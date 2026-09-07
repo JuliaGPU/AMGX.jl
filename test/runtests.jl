@@ -1,5 +1,7 @@
 using AMGX
 
+include("test_mode.jl")
+
 repl_output(x) = sprint((io, x) -> show(io, MIME("text/plain"), x), x)
 
 # Hide annoying output from the library

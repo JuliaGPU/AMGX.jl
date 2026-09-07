@@ -6,6 +6,26 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
 @scope @testset "Solver" begin
     mode = dDDI
 
+    @scope @testset "mixed precision" begin
+        c = @! Config("")
+        r = @! Resources(c)
+        M = @! AMGXMatrix(r, AMGX.dDFI)
+        x = @! AMGXVector(r, AMGX.dDFI)
+        b = @! AMGXVector(r, AMGX.dDFI)
+        s = @! Solver(r, AMGX.dDFI, c)
+
+        AMGX.upload!(M, Cint[0, 1, 2], Cint[0, 1], Float32[2, 4])
+        AMGX.upload!(x, zeros(Float64, 2))
+        AMGX.upload!(b, Float64[6, 20])
+        @test Vector(b) == Float64[6, 20]
+        @test_throws ArgumentError AMGX.upload!(b, Float32[6, 20])
+        @test_throws ArgumentError AMGX.upload!(M, Cint[0, 1, 2], Cint[0, 1], Float64[2, 4])
+
+        AMGX.setup!(s, M)
+        AMGX.solve!(x, s, b)
+        @test Vector(x) ≈ Float64[3, 5]
+    end
+
     @scope @testset "solver defaults" begin
         c = @! Config("")
         r = @! Resources(c)
@@ -108,4 +128,3 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
 end
 
 end # module
-

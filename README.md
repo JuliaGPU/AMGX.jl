@@ -70,7 +70,7 @@ The different modes in AMGX are available as:
 - `AMGX.dDFI`
 - `AMGX.dFFI`
 
-Here, d/h is short for running AMGX on device/host, and the next pair of letters refer to matrix and vector precision (F for float/Float32, D for double/Float64). Julia native inputs to the matrix and vector constructors should match that specified in the mode, e.g. `Vector{Float64}` for D and `Vector{Float32}` for F.
+Here, d/h is short for running AMGX on device/host, and the next pair of letters refer to vector and matrix precision, respectively (F for float/Float32, D for double/Float64). Julia native inputs should match the precision specified in the mode. For example, `dDFI` uses `Float64` vectors and `Float32` matrix coefficients.
 
 ### `Vector`
 

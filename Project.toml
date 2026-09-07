@@ -1,6 +1,6 @@
 name = "AMGX"
 uuid = "c963dde9-0319-47f5-bf0c-b07d3c80ffa6"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["JuliaHub"]
 
 [deps]

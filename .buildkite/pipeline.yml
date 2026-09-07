@@ -5,53 +5,57 @@ steps:
         plugins:
           - JuliaCI/julia#v1:
               version: "{{matrix.julia}}"
-          - JuliaCI/julia-test#v1: ~
           - JuliaCI/julia-coverage#v1: ~
         agents:
-          queue: "juliagpu"
-          cuda: "*"
+          queue: "cuda"
+        # The tests are run in the package's own environment rather than with
+        # `Pkg.test`, because `Pkg.test` resolves into a temporary environment
+        # that does not carry `LocalPreferences.toml` with it -- the CUDA
+        # runtime pin below would be silently ignored and every job would test
+        # whatever runtime the driver happens to support.
         commands: |
-          julia --project -e "
+          julia --project -e '
+            using Pkg
+            Pkg.add(["Defer", "Test"])
             using CUDA
-            CUDA.set_runtime_version!(local_toolkit=true)"
+            CUDA.set_runtime_version!(v"12.6")'
+          julia --project --code-coverage=user -e '
+            using CUDA
+            @assert CUDA.runtime_version() == v"12.6" "CUDA runtime pin was ignored"
+            include("test/runtests.jl")'
         timeout_in_minutes: 60
         matrix:
           setup:
             julia:
               - "1.10"
-              - "1.11"
+              - "1.12"
 
   - group: "CUDA"
     steps:
       - label: "CUDA {{matrix.cuda}}"
         plugins:
           - JuliaCI/julia#v1:
-              version: "1.11"
-          - JuliaCI/julia-test#v1: ~
+              version: "1.12"
           - JuliaCI/julia-coverage#v1: ~
         agents:
-          queue: "juliagpu"
-          cuda: "*"
+          queue: "cuda"
         timeout_in_minutes: 45
         matrix:
           setup:
             cuda:
               - "12.6"
-              - "12.5"
-              - "12.4"
               - "12.3"
-              - "12.2"
-              - "12.1"
               - "12.0"
-              - "11.8"
-              - "11.7"
-              - "11.6"
-              - "11.5"
-              - "11.4"
         commands: |
-          julia --project -e "
+          julia --project -e '
+            using Pkg
+            Pkg.add(["Defer", "Test"])
             using CUDA
-            CUDA.set_runtime_version!(v\"{{matrix.cuda}}\")"
+            CUDA.set_runtime_version!(v"{{matrix.cuda}}")'
+          julia --project --code-coverage=user -e '
+            using CUDA
+            @assert CUDA.runtime_version() == v"{{matrix.cuda}}" "CUDA runtime pin was ignored"
+            include("test/runtests.jl")'
 
 env:
   SECRET_CODECOV_TOKEN: "MIXvKy8FpOJzyBykdGQdVdn0jVli57e1Mc1QQQQA6RyLBdViYwCOjLQS+Yh5sgeD5eEm9JLtu6ISePq01EjqpHF7/6zJlcEJTqj2JidcH/sp/FnJiIY0MfV48DSrz1XA7rN6hHQ8wh09+BMG1Ur4CbtwVQl1HF3wZqmt+b2Ahknyxd0mrIoT3j6RJ90vVSGagLLqWolaQLLOFoGNyHbeFV15r1YXLZDkwyE1SSNz4JF3qEN7vFbM9ZnbR4edd7zWABdDiGd3FDnbn1OJFbZ3JzJXph6JAxZyF34RFDzZsERiKyIrAM+0LfyDYqCAcYnjDpJoEASZugTTwIKXOjUkyQ==;U2FsdGVkX1+go3U7v0bYSZs2Lx4R/lwnJXQm4ATdXL2Y7x5H9QDOgazDvusO8UmBtwHFi3szvPuuxr/gcXYgxw=="

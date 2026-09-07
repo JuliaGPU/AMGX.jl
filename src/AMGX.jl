@@ -14,7 +14,6 @@ module AMGX
 
 using Libdl 
 using CUDA
-using JSON
 using SparseArrays
 using AMGX_jll
 
@@ -23,13 +22,14 @@ libAMGX = ""
 set_libAMGX_path(s::String) = (global libAMGX = s)
 
 function __init__()
-    if AMGX.AMGX_jll.is_available()
-        amgx_dir = get(ENV, "JULIA_AMGX_PATH", nothing)
-        if amgx_dir !== nothing
-            set_libAMGX_path(amgx_dir)
-        else
-            set_libAMGX_path(AMGX_jll.libamgxsh)
-        end
+    # `JULIA_AMGX_PATH` points at a locally built AMGX and has to take effect
+    # even when the JLL provides nothing for this platform -- that is precisely
+    # when it is needed, e.g. when no artifact exists for the installed CUDA.
+    amgx_path = get(ENV, "JULIA_AMGX_PATH", nothing)
+    if amgx_path !== nothing
+        set_libAMGX_path(amgx_path)
+    elseif AMGX_jll.is_available()
+        set_libAMGX_path(AMGX_jll.libamgxsh)
     end
 end
 

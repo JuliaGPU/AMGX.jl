@@ -42,8 +42,7 @@ module API
     import ..libAMGX
 
     libdir = joinpath(@__DIR__, "..", "lib")
-    include(joinpath(libdir, "libAMGX_common.jl"))
-    include(joinpath(libdir, "libAMGX.jl"))
+    include(joinpath(libdir, "libamgx.jl"))
 end
 
 include("errors.jl")

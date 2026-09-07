@@ -72,6 +72,8 @@ The different modes in AMGX are available as:
 
 Here, d/h is short for running AMGX on device/host, and the next pair of letters refer to vector and matrix precision, respectively (F for float/Float32, D for double/Float64). Julia native inputs should match the precision specified in the mode. For example, `dDFI` uses `Float64` vectors and `Float32` matrix coefficients.
 
+Upstream AMGX's cuSPARSE path does not support mixed-precision GPU solves on CUDA 10.1 or later. Use `dDDI` or `dFFI` for GPU solves; uploads and downloads with `dDFI` are still supported.
+
 ### `Vector`
 
 An `AMGXVector` is created from a resource object with a given mode.

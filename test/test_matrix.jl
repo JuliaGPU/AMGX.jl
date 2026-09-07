@@ -10,6 +10,18 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
     m = @! AMGXMatrix(r, dDDI)
     @test occursin("dDDI", repl_output(m))
 
+    @scope @testset "mixed precision uploads" begin
+        # AMGX's cuSPARSE solve path rejects mixed precision on CUDA >= 10.1.
+        # Transfers still exercise the matrix/vector precision and buffer sizes.
+        matrix = @! AMGXMatrix(r, AMGX.dDFI)
+        vector = @! AMGX.AMGXVector(r, AMGX.dDFI)
+        AMGX.upload!(matrix, Cint[0, 1, 2], Cint[0, 1], Float32[2, 4])
+        AMGX.upload!(vector, Float64[6, 20])
+        @test Vector(vector) == Float64[6, 20]
+        @test_throws ArgumentError AMGX.upload!(vector, Float32[6, 20])
+        @test_throws ArgumentError AMGX.upload!(matrix, Cint[0, 1, 2], Cint[0, 1], Float64[2, 4])
+    end
+
     @testset "upload" begin
         AMGX.upload!(m, 
             Cint[0, 1, 3],

@@ -36,6 +36,9 @@ with_init() do
     include("test_solver.jl")
 end
 with_init() do
+    include("test_preconditioner.jl")
+end
+with_init() do
     include("test_refcount.jl")
 end
 # Do this last so the print callback handler we set in the test here doesn't mess up things

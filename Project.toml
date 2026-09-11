@@ -8,12 +8,14 @@ AMGX_jll = "656d14af-56e4-5275-8e68-4e861d7b5043"
 CEnum = "fa961155-64e5-5f13-b03f-caf6b980ea82"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Libdl = "8f399da3-3557-5675-b5ff-fb832c97cbdb"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
 AMGX_jll = "2.5"
 CEnum = "0.5"
 CUDA = "5,6"
+LinearAlgebra = "1"
 julia = "1.10"
 
 [extras]

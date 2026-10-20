@@ -107,11 +107,13 @@ function set_handle!(x::AMGXObject, handle)
     return x
 end
 
+in_session(x::AMGXObject) = INITIALIZED[] && x.session == SESSION[]
+
 # Destroy `x` if it is released and nothing depends on it anymore. Handles from
 # an earlier `initialize` session are dropped without calling into AMGX.
 function try_destroy!(x::AMGXObject)
     (x.closed && x.ref_count == 0 && x.handle != C_NULL) || return
-    if INITIALIZED[] && x.session == SESSION[]
+    if in_session(x)
         if x isa Resources && LIVE_DATA[] > 0
             any(y -> y === x, DEFERRED_RESOURCES) || push!(DEFERRED_RESOURCES, x)
             return
@@ -159,12 +161,14 @@ end
 function check_open(x::AMGXObject)
     x.closed && throw(ArgumentError("`$(typeof(x))` has been closed"))
     x.handle == C_NULL && throw(ArgumentError("`$(typeof(x))` has not been created"))
+    in_session(x) || throw(ArgumentError("`$(typeof(x))` belongs to a finalized AMGX session"))
     return x
 end
 
 function Base.show(io::IO, ::MIME"text/plain", object::AMGXObject)
     state = object.closed ? "closed" :
             object.handle == C_NULL ? "uninitialized" :
+            !in_session(object) ? "invalid" :
             "@" * sprint(show, UInt(object.handle))
     print(io, typeof(object), " ", state)
     isopen(object) || return
@@ -172,7 +176,7 @@ function Base.show(io::IO, ::MIME"text/plain", object::AMGXObject)
         print(io, " ", object.mode)
     end
 end
-Base.isopen(x::AMGXObject) = !x.closed && x.handle != C_NULL
+Base.isopen(x::AMGXObject) = !x.closed && x.handle != C_NULL && in_session(x)
 
 
 ############

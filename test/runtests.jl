@@ -48,6 +48,8 @@ using Test
 @testset "objects outliving their session" begin
     stale = with_init(() -> AMGX.Config(""))
     with_init() do
+        @test !isopen(stale)
+        @test_throws ArgumentError AMGX.Resources(stale)
         close(stale)  # dropped without calling into AMGX
         @test stale.handle == C_NULL
     end

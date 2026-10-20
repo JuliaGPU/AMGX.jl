@@ -1,19 +1,20 @@
 Base.@kwdef mutable struct Resources <: AMGXObject
     handle::API.AMGX_resources_handle = API.AMGX_resources_handle(C_NULL)
-    ref_count::Threads.Atomic{Int} = Threads.Atomic{Int}(0)
+    ref_count::Int = 0
+    closed::Bool = false
+    session::Int = 0
     cfg::Union{Config, Nothing} = nothing
-    function Resources(handle::API.AMGX_resources_handle, ref_count::Threads.Atomic{Int},
-                       cfg::Union{Config, Nothing})
-        resources = new(handle, ref_count, cfg)
-        finalizer(warn_not_destroyed_on_finalize, resources)
+    function Resources(handle::API.AMGX_resources_handle, ref_count::Int, closed::Bool,
+                       session::Int, cfg::Union{Config, Nothing})
+        resources = new(handle, ref_count, closed, session, cfg)
+        finalizer(enqueue_finalized, resources)
         return resources
     end
 end
 get_api_destroy_call(::Type{Resources}) = API.AMGX_resources_destroy
-function dec_refcount_parents(resources::Resources)
-    dec_refcount!(resources.cfg)
-    resources.cfg = nothing
-    nothing
+function release_parents!(resources::Resources)
+    cfg, resources.cfg = resources.cfg, nothing
+    release!(cfg)
 end
 
 """
@@ -41,17 +42,17 @@ device itself, which is the current device for the calling thread.
 """
 function create!(resources::Resources, cfg::Config;
                  device_id::Union{Integer, Nothing}=nothing)
+    drain_pending!()
     res_handle_ptr = Ref{API.AMGX_resources_handle}()
     if device_id === nothing
-        @checked API.AMGX_resources_create_simple(res_handle_ptr, cfg.handle)
+        @checked API.AMGX_resources_create_simple(res_handle_ptr, cfg)
     else
         devices = Ref{Cint}(device_id)
         # A null communicator means the non-distributed path; one device.
-        @checked API.AMGX_resources_create(res_handle_ptr, cfg.handle, C_NULL, 1, devices)
+        @checked API.AMGX_resources_create(res_handle_ptr, cfg, C_NULL, 1, devices)
     end
-    resources.handle = res_handle_ptr[]
-    resources.cfg = cfg
-    inc_refcount!(resources.cfg)
+    set_handle!(resources, res_handle_ptr[])
+    resources.cfg = retain!(cfg)
     return resources
 end
 

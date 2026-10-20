@@ -54,16 +54,11 @@ AMGX.solve!(x, solver, rhs)
 @show AMGX.get_status(solver)
 @show Vector(x)
 
-# AMGX objects are not garbage collected: close them, children before parents
-for obj in (solver, x, rhs, matrix, resources, config)
-    close(obj)
-end
-
 AMGX.finalize()
 ```
 
-See [Memory management](@ref) for why the `close` calls are necessary and how
-[Defer.jl](https://github.com/adambrewster/Defer.jl) makes them less tedious.
+AMGX objects are released by the garbage collector; see [Memory management](@ref)
+for when to `close` them explicitly instead.
 
 ## Not implemented
 

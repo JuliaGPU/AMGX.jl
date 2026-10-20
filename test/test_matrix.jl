@@ -93,7 +93,7 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
             values = collect(1.0:2 * block_dim)
             AMGX.upload!(x, values; block_dim)
             AMGX.set_zero!(y, 2; block_dim)
-            AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(matrix.handle, x.handle, y.handle)
+            AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(matrix, x, y)
             first_sum, second_sum = sum(values[1:block_dim]), sum(values[block_dim+1:end])
             expected = vcat(fill(2 * first_sum + second_sum, block_dim),
                             fill(first_sum + 2 * second_sum, block_dim))
@@ -105,7 +105,7 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
                 end
                 diagonal = storage(fill(3.0, 2 * block_dim^2))
                 @test AMGX.replace_coefficients!(matrix, data, diagonal) === matrix
-                AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(matrix.handle, x.handle, y.handle)
+                AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(matrix, x, y)
                 expected = vcat(fill(3 * first_sum + second_sum, block_dim),
                                 fill(first_sum + 3 * second_sum, block_dim))
                 @test Vector(y) ≈ expected
@@ -155,7 +155,7 @@ using AMGX: Config, Resources, AMGXMatrix, dDDI, dFFI
         values = [1.0, 2.0, 3.0]
         AMGX.upload!(x, values)
         AMGX.set_zero!(y, 3)
-        AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(m.handle, x.handle, y.handle)
+        AMGX.@checked AMGX.API.AMGX_matrix_vector_multiply(m, x, y)
         @test Vector(y) ≈ host_matrix * values
     end
 end

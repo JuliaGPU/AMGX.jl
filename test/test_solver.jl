@@ -83,8 +83,13 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         @test AMGX.get_iterations_number(s) == 0
         @test AMGX.get_iteration_residual(s) > 1.0
 
+        # the solver keeps its matrix alive
         close(M)
-        @test_throws ErrorException AMGX.solve!(x, s, b; zero_inital_guess=true)
+        AMGX.solve!(x, s, b; zero_inital_guess=true)
+        @test AMGX.get_status(s) == AMGX.NOT_CONVERGED
+
+        s2 = @! Solver(r, mode, c)
+        @test_throws ErrorException AMGX.solve!(x, s2, b)
     end
 
     @scope @testset "get_iterations_number" begin

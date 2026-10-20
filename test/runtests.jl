@@ -1,7 +1,6 @@
 using AMGX
 
 include("test_mode.jl")
-include("test_close.jl")
 include("test_constructors.jl")
 
 repl_output(x) = sprint((io, x) -> show(io, MIME("text/plain"), x), x)
@@ -39,7 +38,19 @@ with_init() do
     include("test_preconditioner.jl")
 end
 with_init() do
-    include("test_refcount.jl")
+    include("test_close.jl")
+end
+with_init() do
+    include("test_ownership.jl")
+end
+
+using Test
+@testset "objects outliving their session" begin
+    stale = with_init(() -> AMGX.Config(""))
+    with_init() do
+        close(stale)  # dropped without calling into AMGX
+        @test stale.handle == C_NULL
+    end
 end
 # Do this last so the print callback handler we set in the test here doesn't mess up things
 with_init() do

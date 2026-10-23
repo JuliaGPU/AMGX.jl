@@ -13,7 +13,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
 AMGX_jll = "2.5"
-CEnum = "0.5"
+CEnum = "0.5, 1"
 CUDA = "5,6"
 LinearAlgebra = "1"
 julia = "1.10"

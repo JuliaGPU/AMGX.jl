@@ -54,13 +54,11 @@ AMGX.solve!(x, solver, rhs)
 @show AMGX.get_status(solver)
 @show Vector(x)
 
-# AMGX objects are not garbage collected: close them, children before parents
-foreach(close, (solver, x, rhs, matrix, resources, config))
 AMGX.finalize()
 ```
 
-Note that AMGX objects must be closed explicitly and in the right order — see
-[Memory management](https://juliagpu.github.io/AMGX.jl/stable/memory/) — and that
+AMGX objects are released by the garbage collector, or earlier with `close` — see
+[Memory management](https://juliagpu.github.io/AMGX.jl/stable/memory/). Note that
 a solve which does not converge is not an error, so `get_status` should always be
 checked.
 

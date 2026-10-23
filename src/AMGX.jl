@@ -52,56 +52,131 @@ include("errors.jl")
 # AMGXObject #
 ##############
 
-# All AMGXObject have a `handle` field
+# All AMGXObjects have the fields
+#   handle::Ptr      -- the AMGX handle, C_NULL once destroyed
+#   ref_count::Int   -- number of live objects that depend on this one
+#   closed::Bool     -- released by `close` or the GC; destroyed once `ref_count` is 0
+#   session::Int     -- the `initialize` session the handle belongs to
+# and implement `get_api_destroy_call` and `release_parents!`.
+#
+# Finalizers cannot call into AMGX: they may run on any thread, concurrently
+# with other AMGX calls, after the library was finalized, and in no particular
+# order relative to the objects they depend on. They instead queue the object,
+# and the queue is drained from regular code (see `drain_pending!`).
 abstract type AMGXObject end
 
-struct RefCountError <: Exception
-    typ::DataType
-    n::Int
-end
-Base.showerror(io::IO, err::RefCountError) =
-    print(io, "an AMGXObject of type `$(err.typ)` was attempted to be closed with a non-zero ref count ($(err.n))")
-"""
-    close(object)
+const SESSION = Ref(0)
+const INITIALIZED = Ref(false)
 
-Destroy an AMGX object — a [`Config`](@ref), [`Resources`](@ref),
-[`AMGXVector`](@ref), [`AMGXMatrix`](@ref) or [`Solver`](@ref).
+# Destroying resources frees a device memory pool that AMGX shares between all
+# resources, corrupting vectors, matrices and solvers that are still alive --
+# even ones belonging to other resources. Resources are therefore only
+# destroyed once no such objects exist.
+const LIVE_DATA = Ref(0)
+const DEFERRED_RESOURCES = AMGXObject[]
+holds_device_data(::AMGXObject) = false
 
-AMGX objects are not garbage collected, so each must be closed explicitly.
-Ordering matters: an object cannot be closed while others created from it are
-still alive, and doing so raises a `RefCountError`. [Defer.jl](https://github.com/adambrewster/Defer.jl)
-makes this considerably less tedious.
-"""
-function Base.close(object::T) where T <: AMGXObject
-    object.handle == C_NULL && return
-    if hasfield(T, :ref_count)
-        refs = object.ref_count[]
-        if refs != 0
-            throw(RefCountError(T, refs))
-        end
-    end
-    destroy = get_api_destroy_call(T)
-    @checked destroy(object.handle)
-    dec_refcount_parents(object)
-    object.handle = C_NULL
+const PENDING = AMGXObject[]
+const PENDING_LOCK = Threads.SpinLock() # disables finalizers while held
+
+function enqueue_finalized(x::AMGXObject)
+    x.handle == C_NULL && return
+    @lock PENDING_LOCK push!(PENDING, x)
     return
 end
 
-inc_refcount!(x::AMGXObject) = x.ref_count[] += 1
-dec_refcount!(x::AMGXObject) = x.ref_count[] -= 1
+function drain_pending!()
+    objects = @lock PENDING_LOCK splice!(PENDING, eachindex(PENDING))
+    for x in objects
+        x.closed = true
+    end
+    for x in objects
+        try
+            try_destroy!(x)
+        catch err
+            @warn "AMGX: failed to destroy a garbage collected `$(typeof(x))`" exception=err
+        end
+    end
+    return
+end
 
-function warn_not_destroyed_on_finalize(x::AMGXObject)
-    !(x.handle == C_NULL) && @async @warn("AMGX: likely memory leak: a `$(typeof(x))` was finalized without having been `close`d")
+function set_handle!(x::AMGXObject, handle)
+    x.handle = handle
+    x.session = SESSION[]
+    holds_device_data(x) && (LIVE_DATA[] += 1)
+    return x
+end
+
+in_session(x::AMGXObject) = INITIALIZED[] && x.session == SESSION[]
+
+# Destroy `x` if it is released and nothing depends on it anymore. Handles from
+# an earlier `initialize` session are dropped without calling into AMGX.
+function try_destroy!(x::AMGXObject)
+    (x.closed && x.ref_count == 0 && x.handle != C_NULL) || return
+    if in_session(x)
+        if x isa Resources && LIVE_DATA[] > 0
+            any(y -> y === x, DEFERRED_RESOURCES) || push!(DEFERRED_RESOURCES, x)
+            return
+        end
+        destroy = get_api_destroy_call(typeof(x))
+        @checked destroy(x.handle)
+        holds_device_data(x) && (LIVE_DATA[] -= 1)
+    end
+    x.handle = C_NULL
+    release_parents!(x)
+    if LIVE_DATA[] == 0 && !isempty(DEFERRED_RESOURCES)
+        foreach(try_destroy!, splice!(DEFERRED_RESOURCES, eachindex(DEFERRED_RESOURCES)))
+    end
+    return
+end
+
+retain!(x::AMGXObject) = (x.ref_count += 1; x)
+function release!(x::AMGXObject)
+    x.ref_count -= 1
+    try_destroy!(x)
+end
+release!(::Nothing) = nothing
+
+"""
+    close(object)
+
+Release an AMGX object — a [`Config`](@ref), [`Resources`](@ref),
+[`AMGXVector`](@ref), [`AMGXMatrix`](@ref) or [`Solver`](@ref).
+
+Objects are released automatically when garbage collected, so calling `close`
+is optional. It frees the GPU memory held by the object right away, which the
+garbage collector does not know about.
+
+Closing can happen in any order: an object that others still depend on, like
+`Resources` with live vectors, is destroyed once the last of them is. A closed
+object can no longer be used.
+"""
+function Base.close(x::AMGXObject)
+    drain_pending!()
+    x.closed = true
+    try_destroy!(x)
+    return
+end
+
+function check_open(x::AMGXObject)
+    x.closed && throw(ArgumentError("`$(typeof(x))` has been closed"))
+    x.handle == C_NULL && throw(ArgumentError("`$(typeof(x))` has not been created"))
+    in_session(x) || throw(ArgumentError("`$(typeof(x))` belongs to a finalized AMGX session"))
+    return x
 end
 
 function Base.show(io::IO, ::MIME"text/plain", object::AMGXObject)
-    ptr_str = object.handle == C_NULL ? "uninitialized" : "@" * sprint(show, UInt(object.handle))
-    print(io, typeof(object), " ", ptr_str)
-    object.handle == C_NULL && return
+    state = object.closed ? "closed" :
+            object.handle == C_NULL ? "uninitialized" :
+            !in_session(object) ? "invalid" :
+            "@" * sprint(show, UInt(object.handle))
+    print(io, typeof(object), " ", state)
+    isopen(object) || return
     if hasfield(typeof(object), :mode)
         print(io, " ", object.mode)
     end
 end
+Base.isopen(x::AMGXObject) = !x.closed && x.handle != C_NULL && in_session(x)
 
 
 ############
@@ -122,5 +197,16 @@ include("Vector.jl")
 include("Matrix.jl")
 include("Solver.jl")
 include("Preconditioner.jl")
+
+# Passing the object itself to the C API, rather than its `handle`, keeps it
+# from being collected during the call.
+for (T, H) in ((:Config, :AMGX_config_handle), (:Resources, :AMGX_resources_handle),
+               (:AMGXVector, :AMGX_vector_handle), (:AMGXMatrix, :AMGX_matrix_handle),
+               (:Solver, :AMGX_solver_handle))
+    @eval begin
+        Base.cconvert(::Type{API.$H}, x::$T) = x
+        Base.unsafe_convert(::Type{API.$H}, x::$T) = check_open(x).handle
+    end
+end
 
 end # module

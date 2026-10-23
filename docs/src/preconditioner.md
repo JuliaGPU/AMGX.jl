@@ -86,8 +86,9 @@ true
 
 ## Cleaning up
 
-The preconditioner owns two scratch vectors and must be closed. It does **not**
-own the solver — that stays yours to close:
+Everything is released when garbage collected. To free the GPU memory right
+away, `close` the objects; closing the preconditioner frees its two scratch
+vectors but not the solver it wraps:
 
 ```jldoctest precon
 julia> close(p); close(solver); close(matrix); close(resources); close(config);

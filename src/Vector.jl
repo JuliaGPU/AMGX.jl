@@ -12,22 +12,25 @@ AMGX.upload!(v, [1.0, 2.0, 3.0])
 Vector(v)
 ```
 
-Must be freed with `close` before the [`Resources`](@ref) it was created from.
+Released when garbage collected, or earlier with `close`.
 """
 Base.@kwdef mutable struct AMGXVector <: AMGXObject
     handle::API.AMGX_vector_handle = API.AMGX_vector_handle(C_NULL)
+    ref_count::Int = 0
+    closed::Bool = false
+    session::Int = 0
     mode::Union{Mode, Nothing} = nothing
     resources::Union{Resources, Nothing} = nothing
-    function AMGXVector(handle::API.AMGX_vector_handle, mode::Union{Mode, Nothing},
-                       resources::Union{Resources, Nothing})
-        v = new(handle, mode, resources)
-        finalizer(warn_not_destroyed_on_finalize, v)
+    function AMGXVector(handle::API.AMGX_vector_handle, ref_count::Int, closed::Bool, session::Int,
+                        mode::Union{Mode, Nothing}, resources::Union{Resources, Nothing})
+        v = new(handle, ref_count, closed, session, mode, resources)
+        finalizer(enqueue_finalized, v)
         return v
     end
 end
 function Base.show(io::IO, mime::MIME"text/plain", v::AMGXVector)
     invoke(show, Tuple{IO, MIME"text/plain", AMGXObject}, io, mime, v)
-    v.handle == C_NULL && return
+    isopen(v) || return
     n, block_dim = vector_get_size(v)
     if n !== 0
         if block_dim == 1
@@ -38,20 +41,20 @@ function Base.show(io::IO, mime::MIME"text/plain", v::AMGXVector)
     end
 end
 get_api_destroy_call(::Type{AMGXVector}) = API.AMGX_vector_destroy
-function dec_refcount_parents(v::AMGXVector)
-    dec_refcount!(v.resources)
-    v.resources = nothing
-    nothing
+holds_device_data(::AMGXVector) = true
+function release_parents!(v::AMGXVector)
+    res, v.resources = v.resources, nothing
+    release!(res)
 end
 
 function create!(v::AMGXVector, res::Resources, mode::Mode)
+    drain_pending!()
     vec_handle_ptr = Ref{API.AMGX_vector_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
-    @checked API.AMGX_vector_create(vec_handle_ptr, res.handle, amgx_mode)
-    v.handle = vec_handle_ptr[]
+    @checked API.AMGX_vector_create(vec_handle_ptr, res, amgx_mode)
+    set_handle!(v, vec_handle_ptr[])
     v.mode = mode
-    v.resources = res
-    inc_refcount!(v.resources)
+    v.resources = retain!(res)
     return v
 end
 AMGXVector(res::Resources, mode::Mode) = create!(AMGXVector(), res, mode)
@@ -85,7 +88,7 @@ function upload_raw!(v::AMGXVector, data::PtrOrCuPtrUnion{T}, n::Int, block_dim:
     if vT != T
         throw(ArgumentError("inconsistent AMGX vector mode ($vT) with element type of upload ($T)"))
     end
-    @checked API.AMGX_vector_upload(v.handle, n, block_dim, data)
+    @checked API.AMGX_vector_upload(v, n, block_dim, data)
     return v
 end
 
@@ -138,12 +141,12 @@ function download_raw(ptr::PtrOrCuPtrUnion{T}, v::AMGXVector) where T <: Union{F
     if vT != T
         throw(ArgumentError("inconsistent AMGX vector mode ($vT) with element type of download ($T)"))
     end
-    @checked API.AMGX_vector_download(v.handle, ptr)
+    @checked API.AMGX_vector_download(v, ptr)
 end
 
 function vector_get_size(v::AMGXVector)
     n_ptr, block_dim_ptr = Ref{Cint}(), Ref{Cint}()
-    @checked API.AMGX_vector_get_size(v.handle, n_ptr, block_dim_ptr)
+    @checked API.AMGX_vector_get_size(v, n_ptr, block_dim_ptr)
     return Int(n_ptr[]), Int(block_dim_ptr[])
 end
 """
@@ -162,6 +165,6 @@ for the solution vector before a [`solve!`](@ref), which needs a vector of the
 right size to write into.
 """
 function set_zero!(v::AMGXVector, n::Int=vector_get_size(v)[1]; block_dim=vector_get_size(v)[2])
-    @checked API.AMGX_vector_set_zero(v.handle, Cint(n), Cint(block_dim))
+    @checked API.AMGX_vector_set_zero(v, Cint(n), Cint(block_dim))
     return v
 end

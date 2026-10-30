@@ -41,6 +41,7 @@ end
 get_api_destroy_call(::Type{Solver}) = API.AMGX_solver_destroy
 
 function create!(solver::Solver, res::Resources, mode::Mode, config::Config)
+    check_not_created(solver)
     solver_handle_ptr = Ref{API.AMGX_solver_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
     @checked API.AMGX_solver_create(solver_handle_ptr, res.handle, amgx_mode, config.handle)

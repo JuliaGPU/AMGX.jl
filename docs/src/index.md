@@ -78,5 +78,5 @@ These C API functions are not yet wrapped:
 - `AMGX_vector_bind`
 
 The multi-GPU and distributed APIs are tracked in
-[#8](https://github.com/JuliaGPU/AMGX.jl/issues/8), which depends on MPI support
-in the JLL ([#7](https://github.com/JuliaGPU/AMGX.jl/issues/7)).
+[#8](https://github.com/JuliaGPU/AMGX.jl/issues/8). An MPI build of the library
+is available as `AMGX_MPI_jll`, but AMGX.jl does not use it yet.

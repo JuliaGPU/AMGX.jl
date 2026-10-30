@@ -17,27 +17,28 @@ The accepted parameters are those of the AMGX library itself; see the [AMGX
 reference manual](https://github.com/NVIDIA/AMGX/blob/main/doc/AMGX_Reference.pdf).
 An unknown parameter raises an [`AMGXException`](@ref).
 
-Must be freed with `close` once no longer needed; see the note on memory
-management in the README.
+Released when garbage collected, or earlier with `close`.
 """
 Base.@kwdef mutable struct Config <: AMGXObject
     handle::API.AMGX_config_handle = API.AMGX_config_handle(C_NULL)
-    ref_count::Threads.Atomic{Int} = Threads.Atomic{Int}(0)
-    function Config(handle::API.AMGX_config_handle, ref_count::Threads.Atomic{Int})
-        config = new(handle, ref_count)
-        finalizer(warn_not_destroyed_on_finalize, config)
+    ref_count::Int = 0
+    closed::Bool = false
+    session::Int = 0
+    function Config(handle::API.AMGX_config_handle, ref_count::Int, closed::Bool, session::Int)
+        config = new(handle, ref_count, closed, session)
+        finalizer(enqueue_finalized, config)
         return config
     end
 end
 get_api_destroy_call(::Type{Config}) = API.AMGX_config_destroy
-dec_refcount_parents(config::Config) = nothing
+release_parents!(::Config) = nothing
 
 function create!(config::Config, content::String)
+    drain_pending!()
     check_not_created(config)
     cfg_handle_ptr = Ref{API.AMGX_config_handle}()
     @checked API.AMGX_config_create(cfg_handle_ptr, content)
-    config.handle = cfg_handle_ptr[]
-    return config
+    return set_handle!(config, cfg_handle_ptr[])
 end
 Config(content::String) = create!(Config(), content)
 

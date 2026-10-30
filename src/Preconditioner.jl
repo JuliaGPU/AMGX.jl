@@ -12,9 +12,8 @@ coefficients change but its sparsity does not, use
 [`replace_coefficients!`](@ref) followed by [`update!`](@ref) rather than
 building a new preconditioner.
 
-It owns two scratch vectors and must be `close`d. The [`Solver`](@ref) it wraps
-is not owned by it: the solver must outlive the preconditioner, and closing the
-solver is still the caller's responsibility.
+It owns two scratch vectors, released when garbage collected or earlier with
+`close`. It keeps the [`Solver`](@ref) it wraps alive but does not close it.
 """
 mutable struct AMGXPreconditioner{T}
     solver::Solver
@@ -37,15 +36,15 @@ AMGX.setup!(solver, matrix)
 p = AMGX.aspreconditioner(solver)
 
 ldiv!(x, p, b)     # one AMGX solve
-close(p)
 ```
 """
 function aspreconditioner(solver::Solver)
+    check_open(solver)
     matrix = solver.bound_matrix
     matrix === nothing && throw(ArgumentError("solver has no matrix bound; call `setup!` first"))
-    matrix.handle == C_NULL && throw(ArgumentError("the matrix bound to the solver has been destroyed"))
-
-    n, _ = size(matrix)
+    # The matrix may have been closed by the user; the solver keeps it alive.
+    n_block, block_dims = GC.@preserve matrix matrix_get_size(matrix.handle)
+    n = n_block * block_dims[1]
     res = solver.resources
     mode = solver.mode
     T = vector_type(mode)
@@ -61,8 +60,8 @@ end
 """
     close(p::AMGXPreconditioner)
 
-Free the scratch vectors the preconditioner allocated. The [`Solver`](@ref) it
-wraps is *not* closed — it was created by the caller and stays theirs to close.
+Free the scratch vectors the preconditioner allocated, without waiting for the
+garbage collector. The [`Solver`](@ref) it wraps is *not* closed.
 """
 function Base.close(p::AMGXPreconditioner)
     close(p.rhs)

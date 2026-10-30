@@ -1,26 +1,26 @@
 # Memory management
 
-AMGX objects are **not** garbage collected. Every `Config`, `Resources`,
-`AMGXVector`, `AMGXMatrix` and `Solver` must be freed explicitly with `close`.
+AMGX objects — `Config`, `Resources`, `AMGXVector`, `AMGXMatrix` and `Solver` —
+are released automatically when they are garbage collected. Each object keeps
+the objects it was created from alive, so a `Resources` is never destroyed while
+a vector created from it is still in use, and a `Solver` keeps the matrix bound
+by `setup!` alive.
+
+## Releasing early with `close`
+
+The garbage collector does not know about the GPU memory AMGX allocates, so it
+may not run before the device runs out of memory. `close` releases an object
+right away:
 
 ```julia
 close(solver)
 close(matrix)
-close(resources)
-close(config)
 ```
 
-Order matters. AMGX.jl reference-counts the objects, and closing a parent while
-a child is still alive raises a `RefCountError` — for example closing
-`Resources` before a vector created from it. Close children first.
-
-Forgetting to close an object is not silent either: the finalizer warns.
-
-## Defer.jl
-
-[Defer.jl](https://github.com/adambrewster/Defer.jl) removes most of the
-bookkeeping. `@!` registers an object for closing at the end of the enclosing
-`@scope`, in the right order:
+`close` can be called in any order. An object that others still depend on is
+only destroyed once the last of them is, but can no longer be used after
+`close`. [Defer.jl](https://github.com/adambrewster/Defer.jl) closes objects at
+the end of a scope:
 
 ```julia
 using Defer
@@ -31,10 +31,16 @@ using Defer
     matrix    = @! AMGX.AMGXMatrix(resources, AMGX.dDDI)
     solver    = @! AMGX.Solver(resources, AMGX.dDDI, config)
     # ... use them ...
-end   # everything closed here, children before parents
+end   # everything closed here
 ```
 
-This is how the package's own test suite is written.
+Finalizers do not call into AMGX: collected objects are queued, and destroyed
+the next time an AMGX object is created or closed, or on `AMGX.finalize`.
+
+!!! note
+    Destroying a `Resources` frees device memory that AMGX shares between all
+    resources. AMGX.jl therefore postpones destroying resources until no
+    vectors, matrices or solvers are alive.
 
 ## Finalizing the library
 
@@ -45,4 +51,6 @@ AMGX.finalize_plugins()
 AMGX.finalize()
 ```
 
-All AMGX objects must be closed before this.
+These run the garbage collector first, so unreachable objects are destroyed.
+Objects still referenced afterwards become invalid; they are dropped without
+calling into AMGX when collected or closed.

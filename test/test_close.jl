@@ -3,8 +3,11 @@ module TestClose
 using AMGX, Test
 
 # Exercise destruction errors without allocating native resources.
-mutable struct TestObject <: AMGX.AMGXObject
+Base.@kwdef mutable struct TestObject <: AMGX.AMGXObject
     handle::Ptr{Cvoid}
+    ref_count::Int = 0
+    closed::Bool = false
+    session::Int = AMGX.SESSION[]
     parent::Union{AMGX.Config, Nothing}
 end
 
@@ -15,34 +18,33 @@ function destroy_test_object(handle)
     return fail_destroy[] ? AMGX.API.AMGX_RC_BAD_PARAMETERS : AMGX.API.AMGX_RC_OK
 end
 AMGX.get_api_destroy_call(::Type{TestObject}) = destroy_test_object
-function AMGX.dec_refcount_parents(object::TestObject)
-    AMGX.dec_refcount!(object.parent)
-    object.parent = nothing
-    return nothing
+function AMGX.release_parents!(object::TestObject)
+    parent, object.parent = object.parent, nothing
+    AMGX.release!(parent)
 end
 
 @testset "Failed close preserves ownership" begin
     parent = AMGX.Config()
-    AMGX.inc_refcount!(parent)
+    AMGX.retain!(parent)
     handle = Ptr{Cvoid}(1)
-    object = TestObject(handle, parent)
+    object = TestObject(; handle, parent)
 
     @test_throws AMGX.AMGXException close(object)
     @test destroy_calls[] == 1
     @test object.handle == handle
     @test object.parent === parent
-    @test parent.ref_count[] == 1
+    @test parent.ref_count == 1
 
     fail_destroy[] = false
     @test close(object) === nothing
     @test destroy_calls[] == 2
     @test object.handle == C_NULL
     @test object.parent === nothing
-    @test parent.ref_count[] == 0
+    @test parent.ref_count == 0
 
     @test close(object) === nothing
     @test destroy_calls[] == 2
-    @test parent.ref_count[] == 0
+    @test parent.ref_count == 0
 end
 
 end # module

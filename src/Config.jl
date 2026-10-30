@@ -35,6 +35,7 @@ release_parents!(::Config) = nothing
 
 function create!(config::Config, content::String)
     drain_pending!()
+    check_not_created(config)
     cfg_handle_ptr = Ref{API.AMGX_config_handle}()
     @checked API.AMGX_config_create(cfg_handle_ptr, content)
     return set_handle!(config, cfg_handle_ptr[])

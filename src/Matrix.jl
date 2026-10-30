@@ -53,6 +53,7 @@ end
 
 function create!(m::AMGXMatrix, res::Resources, mode::Mode)
     drain_pending!()
+    check_not_created(m)
     mat_handle_ptr = Ref{API.AMGX_matrix_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
     @checked API.AMGX_matrix_create(mat_handle_ptr, res, amgx_mode)

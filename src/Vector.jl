@@ -49,6 +49,7 @@ end
 
 function create!(v::AMGXVector, res::Resources, mode::Mode)
     drain_pending!()
+    check_not_created(v)
     vec_handle_ptr = Ref{API.AMGX_vector_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
     @checked API.AMGX_vector_create(vec_handle_ptr, res, amgx_mode)

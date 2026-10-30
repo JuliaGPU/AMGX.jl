@@ -109,4 +109,27 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI
     end
 end
 
+@testset "create! on an open object" begin
+    c = Config("")
+    @test_throws ArgumentError AMGX.create!(c, "")
+    r = Resources(c)
+    @test_throws ArgumentError AMGX.create!(r, c)
+    @test c.ref_count == 1
+    v = AMGXVector(r, dDDI)
+    m = AMGXMatrix(r, dDDI)
+    s = Solver(r, dDDI, c)
+    @test_throws ArgumentError AMGX.create!(v, r, dDDI)
+    @test_throws ArgumentError AMGX.create!(m, r, dDDI)
+    @test_throws ArgumentError AMGX.create!(s, r, dDDI, c)
+    @test r.ref_count == 3
+    @test c.ref_count == 2
+
+    # a closed object can be created again
+    close(v)
+    @test AMGX.create!(v, r, dDDI) === v
+    @test r.ref_count == 3
+
+    foreach(close, (s, m, v, r, c))
+end
+
 end # module

@@ -158,6 +158,11 @@ function Base.close(x::AMGXObject)
     return
 end
 
+function check_not_created(x::AMGXObject)
+    x.handle == C_NULL || throw(ArgumentError("this `$(typeof(x))` has already been created; `close` it first"))
+    return
+end
+
 function check_open(x::AMGXObject)
     x.closed && throw(ArgumentError("`$(typeof(x))` has been closed"))
     x.handle == C_NULL && throw(ArgumentError("`$(typeof(x))` has not been created"))

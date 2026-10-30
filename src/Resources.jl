@@ -20,7 +20,8 @@ end
 """
     create!(resources::Resources, cfg::Config; device_id=nothing)
 
-Create AMGX `resources` from `cfg`.
+Create AMGX `resources` from `cfg`. Like the other `create!` methods, this raises
+an `ArgumentError` if the object has already been created and not yet `close`d.
 
 `device_id` selects the CUDA device AMGX should run on, as a zero-based index
 matching CUDA's own numbering. When it is `nothing` (the default) AMGX picks the
@@ -43,6 +44,7 @@ device itself, which is the current device for the calling thread.
 function create!(resources::Resources, cfg::Config;
                  device_id::Union{Integer, Nothing}=nothing)
     drain_pending!()
+    check_not_created(resources)
     res_handle_ptr = Ref{API.AMGX_resources_handle}()
     if device_id === nothing
         @checked API.AMGX_resources_create_simple(res_handle_ptr, cfg)

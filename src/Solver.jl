@@ -47,6 +47,7 @@ holds_device_data(::Solver) = true
 
 function create!(solver::Solver, res::Resources, mode::Mode, config::Config)
     drain_pending!()
+    check_not_created(solver)
     solver_handle_ptr = Ref{API.AMGX_solver_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
     @checked API.AMGX_solver_create(solver_handle_ptr, res, amgx_mode, config)

@@ -102,6 +102,7 @@ end
 
 function set_handle!(x::AMGXObject, handle)
     x.handle = handle
+    x.closed = false
     x.session = SESSION[]
     holds_device_data(x) && (LIVE_DATA[] += 1)
     return x

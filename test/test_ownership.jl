@@ -29,6 +29,8 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI
         close(c)
         close(r)
         @test !isopen(r) && r.handle != C_NULL
+        @test_throws ArgumentError AMGX.create!(c, "")
+        @test_throws ArgumentError AMGX.create!(r, c)
         @test occursin("closed", sprint(show, MIME("text/plain"), r))
         @test_throws ArgumentError AMGXVector(r, dDDI)
         AMGX.upload!(v, [1.0, 2.0])
@@ -48,6 +50,7 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI
         @test m.ref_count == 1
         close(m)
         @test m.handle != C_NULL
+        @test_throws ArgumentError AMGX.create!(m, r, dDDI)
         b = AMGXVector(r, dDDI)
         AMGX.upload!(b, [2.0, 2.0])
         x = AMGXVector(r, dDDI)
@@ -75,11 +78,44 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI
         AMGX.upload!(v2, rand(10))
         close(r1)
         @test r1.handle != C_NULL
+        @test_throws ArgumentError AMGX.create!(r1, c)
         AMGX.upload!(v2, rand(10))
         close(v2)
         @test r1.handle == C_NULL
         close(r2); close(c)
         @test AMGX.LIVE_DATA[] == 0
+    end
+
+    @testset "recreate closed objects" begin
+        c = Config("")
+        r = Resources(c)
+        v = AMGXVector(r, dDDI)
+        m = AMGXMatrix(r, dDDI)
+        s = Solver(r, dDDI, c)
+        objects = (s, m, v, r, c)
+        foreach(close, objects)
+        @test all(x -> x.handle == C_NULL, objects)
+
+        @test AMGX.create!(c, "") === c
+        @test AMGX.create!(r, c) === r
+        @test AMGX.create!(v, r, dDDI) === v
+        @test AMGX.create!(m, r, dDDI) === m
+        @test AMGX.create!(s, r, dDDI, c) === s
+        @test all(isopen, objects)
+        @test c.ref_count == 2
+        @test r.ref_count == 3
+
+        AMGX.upload!(m, Cint[0, 1, 2], Cint[0, 1], [2.0, 4.0])
+        AMGX.setup!(s, m)
+        AMGX.upload!(v, [2.0, 2.0])
+        x = AMGXVector(r, dDDI)
+        AMGX.set_zero!(x, 2)
+        AMGX.solve!(x, s, v)
+        @test Vector(x) ≈ [1.0, 0.5]
+        close(x)
+        foreach(close, objects)
+        @test all(x -> x.handle == C_NULL, objects)
+        @test c.ref_count == r.ref_count == 0
     end
 
     @testset "garbage collection" begin

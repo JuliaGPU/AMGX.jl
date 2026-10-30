@@ -39,6 +39,7 @@ ldiv!(x, p, b)     # one AMGX solve
 ```
 """
 function aspreconditioner(solver::Solver)
+    check_open(solver)
     matrix = solver.bound_matrix
     matrix === nothing && throw(ArgumentError("solver has no matrix bound; call `setup!` first"))
     # The matrix may have been closed by the user; the solver keeps it alive.

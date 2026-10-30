@@ -47,11 +47,27 @@ end
 using Test
 @testset "objects outliving their session" begin
     stale = with_init(() -> AMGX.Config(""))
+    stale_solver = with_init() do
+        c = AMGX.Config("")
+        r = AMGX.Resources(c)
+        m = AMGX.AMGXMatrix(r, AMGX.dDDI)
+        AMGX.upload!(m, Cint[0, 1, 2], Cint[0, 1], [2.0, 4.0])
+        s = AMGX.Solver(r, AMGX.dDDI, c)
+        AMGX.setup!(s, m)
+        return s
+    end
+    # Reject the solver before querying its matrix's raw handle, both after
+    # finalization and after a new session has started.
+    stale_solver_error = "`AMGX.Solver` belongs to a finalized AMGX session"
+    @test_throws stale_solver_error AMGX.aspreconditioner(stale_solver)
     with_init() do
         @test !isopen(stale)
         @test_throws ArgumentError AMGX.Resources(stale)
         close(stale)  # dropped without calling into AMGX
         @test stale.handle == C_NULL
+        @test_throws stale_solver_error AMGX.aspreconditioner(stale_solver)
+        close(stale_solver)
+        @test stale_solver.handle == C_NULL
     end
 end
 # Do this last so the print callback handler we set in the test here doesn't mess up things

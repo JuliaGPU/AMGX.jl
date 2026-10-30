@@ -90,6 +90,11 @@ end
 inc_refcount!(x::AMGXObject) = x.ref_count[] += 1
 dec_refcount!(x::AMGXObject) = x.ref_count[] -= 1
 
+function check_not_created(x::AMGXObject)
+    x.handle == C_NULL || throw(ArgumentError("this `$(typeof(x))` has already been created; `close` it first"))
+    return
+end
+
 function warn_not_destroyed_on_finalize(x::AMGXObject)
     !(x.handle == C_NULL) && @async @warn("AMGX: likely memory leak: a `$(typeof(x))` was finalized without having been `close`d")
 end

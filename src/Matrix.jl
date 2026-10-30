@@ -49,6 +49,7 @@ function dec_refcount_parents(m::AMGXMatrix)
 end
 
 function create!(m::AMGXMatrix, res::Resources, mode::Mode)
+    check_not_created(m)
     mat_handle_ptr = Ref{API.AMGX_matrix_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
     @checked API.AMGX_matrix_create(mat_handle_ptr, res.handle, amgx_mode)

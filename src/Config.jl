@@ -33,6 +33,7 @@ get_api_destroy_call(::Type{Config}) = API.AMGX_config_destroy
 dec_refcount_parents(config::Config) = nothing
 
 function create!(config::Config, content::String)
+    check_not_created(config)
     cfg_handle_ptr = Ref{API.AMGX_config_handle}()
     @checked API.AMGX_config_create(cfg_handle_ptr, content)
     config.handle = cfg_handle_ptr[]

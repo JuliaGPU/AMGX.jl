@@ -45,6 +45,7 @@ function dec_refcount_parents(v::AMGXVector)
 end
 
 function create!(v::AMGXVector, res::Resources, mode::Mode)
+    check_not_created(v)
     vec_handle_ptr = Ref{API.AMGX_vector_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
     @checked API.AMGX_vector_create(vec_handle_ptr, res.handle, amgx_mode)

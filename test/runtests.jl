@@ -56,6 +56,13 @@ using Test
         AMGX.setup!(s, m)
         return s
     end
+    # `finalize` destroys objects that are still referenced; AMGX would
+    # otherwise destroy them at process exit, after CUDA is gone, and abort.
+    @test stale_solver.handle == C_NULL
+    @test stale_solver.bound_matrix.handle == C_NULL
+    @test stale_solver.resources.handle == C_NULL
+    @test stale_solver.config.handle == C_NULL
+    @test repl_output(stale_solver) == "AMGX.Solver invalid"
     # Reject the solver before querying its matrix's raw handle, both after
     # finalization and after a new session has started.
     stale_solver_error = "`AMGX.Solver` belongs to a finalized AMGX session"

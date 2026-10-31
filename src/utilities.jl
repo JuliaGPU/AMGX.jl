@@ -30,11 +30,12 @@ initialize_plugins() = @checked API.AMGX_initialize_plugins()
 Shut the AMGX library down.
 
 Runs the garbage collector first, so objects that are no longer reachable are
-destroyed. Objects still in use are not: their handles are invalid afterwards
-and they are dropped without calling into AMGX when collected.
+released normally. Objects still referenced are then destroyed as well; they
+are invalid afterwards and cannot be used anymore.
 """
 function finalize()
     collect_garbage()
+    destroy_all_live!()
     @checked API.AMGX_finalize()
     INITIALIZED[] = false
     return

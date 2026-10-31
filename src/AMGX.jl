@@ -100,15 +100,55 @@ function drain_pending!()
     return
 end
 
+# Every created object, so `finalize` can destroy the ones still alive. AMGX
+# otherwise destroys them itself from a static destructor at process exit,
+# after CUDA has been torn down, which aborts the process.
+const CREATED = WeakRef[]
+const CREATED_PRUNE_AT = Ref(64)
+
 function set_handle!(x::AMGXObject, handle)
     x.handle = handle
     x.closed = false
     x.session = SESSION[]
     holds_device_data(x) && (LIVE_DATA[] += 1)
+    push!(CREATED, WeakRef(x))
+    if length(CREATED) >= CREATED_PRUNE_AT[]
+        filter!(r -> r.value !== nothing && r.value.handle != C_NULL, CREATED)
+        CREATED_PRUNE_AT[] = max(64, 2 * length(CREATED))
+    end
     return x
 end
 
+# Destroy every object of the current session that is still alive, regardless
+# of what depends on it, dependents first. Their Julia objects stay around but
+# are invalid from here on.
+function destroy_all_live!()
+    live = AMGXObject[]
+    for r in CREATED
+        x = r.value
+        x === nothing && continue
+        x.handle != C_NULL && x.session == SESSION[] && push!(live, x)
+    end
+    empty!(CREATED)
+    CREATED_PRUNE_AT[] = 64
+    for T in (Solver, AMGXMatrix, AMGXVector, Resources, Config), x in live
+        x isa T || continue
+        destroy = get_api_destroy_call(T)
+        try
+            @checked destroy(x.handle)
+        catch err
+            @warn "AMGX: failed to destroy a live `$T` on finalize" exception=err
+        end
+        x.handle = C_NULL
+    end
+    LIVE_DATA[] = 0
+    empty!(DEFERRED_RESOURCES)
+    return
+end
+
 in_session(x::AMGXObject) = INITIALIZED[] && x.session == SESSION[]
+# Created in a session that has since been finalized.
+is_stale(x::AMGXObject) = x.session != 0 && !in_session(x)
 
 # Destroy `x` if it is released and nothing depends on it anymore. Handles from
 # an earlier `initialize` session are dropped without calling into AMGX.
@@ -166,15 +206,15 @@ end
 
 function check_open(x::AMGXObject)
     x.closed && throw(ArgumentError("`$(typeof(x))` has been closed"))
+    is_stale(x) && throw(ArgumentError("`$(typeof(x))` belongs to a finalized AMGX session"))
     x.handle == C_NULL && throw(ArgumentError("`$(typeof(x))` has not been created"))
-    in_session(x) || throw(ArgumentError("`$(typeof(x))` belongs to a finalized AMGX session"))
     return x
 end
 
 function Base.show(io::IO, ::MIME"text/plain", object::AMGXObject)
     state = object.closed ? "closed" :
+            is_stale(object) ? "invalid" :
             object.handle == C_NULL ? "uninitialized" :
-            !in_session(object) ? "invalid" :
             "@" * sprint(show, UInt(object.handle))
     print(io, typeof(object), " ", state)
     isopen(object) || return

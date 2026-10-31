@@ -52,5 +52,5 @@ AMGX.finalize()
 ```
 
 These run the garbage collector first, so unreachable objects are destroyed.
-Objects still referenced afterwards become invalid; they are dropped without
-calling into AMGX when collected or closed.
+`finalize` then destroys the objects that are still referenced too. They become
+invalid and cannot be used anymore; closing them is a no-op.

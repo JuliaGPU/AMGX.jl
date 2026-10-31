@@ -13,44 +13,48 @@ AMGX.setup!(solver, matrix)
 AMGX.solve!(x, solver, b)
 ```
 
-Must be freed with `close` before the [`Resources`](@ref) and [`Config`](@ref)
-it was created from.
+The solver keeps the matrix bound by [`setup!`](@ref) alive, so that matrix may
+be closed while the solver is still in use. Released when garbage collected, or
+earlier with `close`.
 """
 Base.@kwdef mutable struct Solver <: AMGXObject
     handle::API.AMGX_solver_handle = API.AMGX_solver_handle(C_NULL)
+    ref_count::Int = 0
+    closed::Bool = false
+    session::Int = 0
     resources::Union{Resources, Nothing} = nothing
     config::Union{Config, Nothing} = nothing
     mode::Union{Mode, Nothing} = nothing
     bound_matrix::Union{AMGXMatrix, Nothing} = nothing
-    function Solver(handle::API.AMGX_solver_handle, resources::Union{Resources, Nothing}, config::Union{Config, Nothing},
+    function Solver(handle::API.AMGX_solver_handle, ref_count::Int, closed::Bool, session::Int,
+                    resources::Union{Resources, Nothing}, config::Union{Config, Nothing},
                     mode::Union{Mode, Nothing}, bound_matrix::Union{AMGXMatrix, Nothing})
-        solver = new(handle, resources, config, mode, bound_matrix)
-        finalizer(warn_not_destroyed_on_finalize, solver)
+        solver = new(handle, ref_count, closed, session, resources, config, mode, bound_matrix)
+        finalizer(enqueue_finalized, solver)
         return solver
     end
 end
-function dec_refcount_parents(solver::Solver)
-    dec_refcount!(solver.resources)
-    dec_refcount!(solver.config)
-    solver.resources = nothing
-    solver.config = nothing
-    solver.bound_matrix = nothing
-    solver.mode = nothing
-    nothing
+function release_parents!(solver::Solver)
+    res, solver.resources = solver.resources, nothing
+    cfg, solver.config = solver.config, nothing
+    m, solver.bound_matrix = solver.bound_matrix, nothing
+    release!(m)
+    release!(res)
+    release!(cfg)
 end
 get_api_destroy_call(::Type{Solver}) = API.AMGX_solver_destroy
+holds_device_data(::Solver) = true
 
 function create!(solver::Solver, res::Resources, mode::Mode, config::Config)
+    drain_pending!()
     check_not_created(solver)
     solver_handle_ptr = Ref{API.AMGX_solver_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
-    @checked API.AMGX_solver_create(solver_handle_ptr, res.handle, amgx_mode, config.handle)
-    solver.handle = solver_handle_ptr[]
-    solver.resources = res
-    solver.config = config
+    @checked API.AMGX_solver_create(solver_handle_ptr, res, amgx_mode, config)
+    set_handle!(solver, solver_handle_ptr[])
+    solver.resources = retain!(res)
+    solver.config = retain!(config)
     solver.mode = mode
-    inc_refcount!(solver.resources)
-    inc_refcount!(solver.config)
     return solver
 end
 Solver(res::Resources, mode::Mode, config::Config) = create!(Solver(), res, mode, config)
@@ -62,8 +66,11 @@ Bind `matrix` to `solver` and perform the setup phase, building the multigrid
 hierarchy. This is the expensive part of a solve.
 """
 function setup!(solver::Solver, matrix::AMGXMatrix)
-    @checked API.AMGX_solver_setup(solver.handle, matrix.handle)
-    solver.bound_matrix = matrix
+    @checked API.AMGX_solver_setup(solver, matrix)
+    if solver.bound_matrix !== matrix
+        old, solver.bound_matrix = solver.bound_matrix, retain!(matrix)
+        release!(old)
+    end
     return solver
 end
 
@@ -79,7 +86,7 @@ than a full [`setup!`](@ref).
 """
 function resetup!(solver::Solver, matrix::AMGXMatrix)
     solver.bound_matrix == matrix || throw(ArgumentError("Matrix is not the same as the one bound to the solver"))
-    @checked API.AMGX_solver_resetup(solver.handle, matrix.handle)
+    @checked API.AMGX_solver_resetup(solver, matrix)
     return solver
 end
 
@@ -94,15 +101,11 @@ Note that a solve that does not converge is *not* an error: check
 [`get_status`](@ref) afterwards.
 """
 function solve!(sol::AMGXVector, solver::Solver, rhs::AMGXVector; zero_inital_guess::Bool=false)
-    if solver.bound_matrix === nothing 
-        error("no matrix attached to solver")
-    elseif solver.bound_matrix.handle == C_NULL
-        error("matrix has already been destroyed")
-    end
+    solver.bound_matrix === nothing && error("no matrix attached to solver")
     if zero_inital_guess
-        @checked API.AMGX_solver_solve_with_0_initial_guess(solver.handle, rhs.handle, sol.handle)
+        @checked API.AMGX_solver_solve_with_0_initial_guess(solver, rhs, sol)
     else
-        @checked API.AMGX_solver_solve(solver.handle, rhs.handle, sol.handle)
+        @checked API.AMGX_solver_solve(solver, rhs, sol)
     end
     return sol
 end
@@ -114,7 +117,7 @@ Number of iterations taken by the last [`solve!`](@ref).
 """
 function get_iterations_number(solver::Solver)
     n_ptr = Ref{Cint}()
-    @checked API.AMGX_solver_get_iterations_number(solver.handle, n_ptr)
+    @checked API.AMGX_solver_get_iterations_number(solver, n_ptr)
     return Int(n_ptr[])
 end
 
@@ -129,7 +132,7 @@ the last.
 """
 function get_iteration_residual(solver::Solver, iter::Int=get_iterations_number(solver), block_idx::Int=0)
     res_ptr = Ref{Float64}()
-    @checked API.AMGX_solver_get_iteration_residual(solver.handle, iter, block_idx, res_ptr)
+    @checked API.AMGX_solver_get_iteration_residual(solver, iter, block_idx, res_ptr)
     return res_ptr[]
 end
 
@@ -160,6 +163,6 @@ solution vector.
 """
 function get_status(solver::Solver)
     status_ptr = Ref{API.AMGX_SOLVE_STATUS}()
-    @checked API.AMGX_solver_get_status(solver.handle, status_ptr)
+    @checked API.AMGX_solver_get_status(solver, status_ptr)
     return SolverStatus(Int(status_ptr[]))
 end

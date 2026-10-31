@@ -8,7 +8,14 @@
 Initialize the AMGX library. Must be called before any other AMGX call, and
 paired with [`finalize`](@ref).
 """
-initialize() = @checked API.AMGX_initialize()
+function initialize()
+    @checked API.AMGX_initialize()
+    SESSION[] += 1
+    INITIALIZED[] = true
+    LIVE_DATA[] = 0
+    empty!(DEFERRED_RESOURCES)
+    return
+end
 
 """
     initialize_plugins()
@@ -20,16 +27,34 @@ initialize_plugins() = @checked API.AMGX_initialize_plugins()
 """
     finalize()
 
-Shut the AMGX library down. All AMGX objects must be `close`d first.
+Shut the AMGX library down.
+
+Runs the garbage collector first, so objects that are no longer reachable are
+released normally. Objects still referenced are then destroyed as well; they
+are invalid afterwards and cannot be used anymore.
 """
-finalize() = @checked API.AMGX_finalize()
+function finalize()
+    collect_garbage()
+    destroy_all_live!()
+    @checked API.AMGX_finalize()
+    INITIALIZED[] = false
+    return
+end
 
 """
     finalize_plugins()
 
 Shut AMGX's plugins down, before [`finalize`](@ref).
 """
-finalize_plugins() = @checked API.AMGX_finalize_plugins()
+function finalize_plugins()
+    collect_garbage()
+    @checked API.AMGX_finalize_plugins()
+end
+
+function collect_garbage()
+    GC.gc()
+    drain_pending!()
+end
 
 
 ##############

@@ -14,22 +14,25 @@ matrix = AMGX.AMGXMatrix(resources, AMGX.dDDI)
 AMGX.upload!(matrix, CUDA.CUSPARSE.CuSparseMatrixCSR(A))
 ```
 
-Must be freed with `close` before the [`Resources`](@ref) it was created from.
+Released when garbage collected, or earlier with `close`.
 """
 Base.@kwdef mutable struct AMGXMatrix <: AMGXObject
     handle::API.AMGX_matrix_handle = API.AMGX_matrix_handle(C_NULL)
+    ref_count::Int = 0
+    closed::Bool = false
+    session::Int = 0
     mode::Union{Mode, Nothing} = nothing
     resources::Union{Resources, Nothing} = nothing
-    function AMGXMatrix(handle::API.AMGX_matrix_handle, mode::Union{Mode, Nothing},
-                       resources::Union{Resources, Nothing})
-        m = new(handle, mode, resources)
-        finalizer(warn_not_destroyed_on_finalize, m)
+    function AMGXMatrix(handle::API.AMGX_matrix_handle, ref_count::Int, closed::Bool, session::Int,
+                        mode::Union{Mode, Nothing}, resources::Union{Resources, Nothing})
+        m = new(handle, ref_count, closed, session, mode, resources)
+        finalizer(enqueue_finalized, m)
         return m
     end
 end
 function Base.show(io::IO, mime::MIME"text/plain", m::AMGXMatrix)
     invoke(show, Tuple{IO, MIME"text/plain", AMGXObject}, io, mime, m)
-    m.handle == C_NULL && return
+    isopen(m) || return
     n, block_dims = matrix_get_size(m)
     if n !== 0
         nz = amgx_nnz(m)
@@ -42,21 +45,21 @@ function Base.show(io::IO, mime::MIME"text/plain", m::AMGXMatrix)
     end
 end
 get_api_destroy_call(::Type{AMGXMatrix}) = API.AMGX_matrix_destroy
-function dec_refcount_parents(m::AMGXMatrix)
-    dec_refcount!(m.resources)
-    m.resources = nothing
-    nothing
+holds_device_data(::AMGXMatrix) = true
+function release_parents!(m::AMGXMatrix)
+    res, m.resources = m.resources, nothing
+    release!(res)
 end
 
 function create!(m::AMGXMatrix, res::Resources, mode::Mode)
+    drain_pending!()
     check_not_created(m)
     mat_handle_ptr = Ref{API.AMGX_matrix_handle}()
     amgx_mode = API.AMGX_Mode(Int(mode))
-    @checked API.AMGX_matrix_create(mat_handle_ptr, res.handle, amgx_mode)
-    m.handle = mat_handle_ptr[]
+    @checked API.AMGX_matrix_create(mat_handle_ptr, res, amgx_mode)
+    set_handle!(m, mat_handle_ptr[])
     m.mode = mode
-    m.resources = res
-    inc_refcount!(m.resources)
+    m.resources = retain!(res)
     return m
 end
 AMGXMatrix(res::Resources, mode::Mode) = create!(AMGXMatrix(), res, mode)
@@ -74,7 +77,7 @@ function upload!(m::AMGXMatrix, n::Int, nnz::Int, row_ptrs_ptr::PtrOrCuPtrUnion{
     data_ptr = reinterpret(Ptr{T}, data_ptr)
     row_ptrs_ptr = reinterpret(Ptr{Cint}, row_ptrs_ptr)
     block_dim_x, block_dim_y = block_dims
-    @checked API. AMGX_matrix_upload_all(m.handle, n, nnz, block_dim_x, block_dim_y, row_ptrs_ptr,
+    @checked API.AMGX_matrix_upload_all(m, n, nnz, block_dim_x, block_dim_y, row_ptrs_ptr,
                                             col_indices_ptr, data_ptr, diag_data_ptr)
     return m
 end
@@ -137,9 +140,10 @@ function upload!(matrix::AMGXMatrix, cu_matrix::CUDA.CUSPARSE.CuSparseMatrixCSR)
     upload!(matrix, row_ptrs, col_indices, cu_matrix.nzVal)
 end
 
-function matrix_get_size(matrix::AMGXMatrix)
+# Also takes a raw handle, for a matrix the user closed but a solver still holds
+function matrix_get_size(matrix::Union{AMGXMatrix, API.AMGX_matrix_handle})
     n_ptr, block_dim_x_ptr, block_dim_y_ptr = Ref{Cint}(), Ref{Cint}(), Ref{Cint}()
-    @checked API.AMGX_matrix_get_size(matrix.handle, n_ptr, block_dim_x_ptr, block_dim_y_ptr)
+    @checked API.AMGX_matrix_get_size(matrix, n_ptr, block_dim_x_ptr, block_dim_y_ptr)
     return Int(n_ptr[]), (Int(block_dim_x_ptr[]), Int(block_dim_y_ptr[]))
 end
 """
@@ -186,13 +190,13 @@ function replace_coefficients!(m::AMGXMatrix, n::Int, nnz::Int, data_ptr::PtrOrC
     # TODO the CuPtr conversions should be handled in the ccall
     data_ptr = reinterpret(Ptr{T}, data_ptr)
     diag_data_ptr = reinterpret(Ptr{T}, diag_data_ptr)
-    @checked API.AMGX_matrix_replace_coefficients(m.handle, n, nnz, data_ptr, diag_data_ptr)
+    @checked API.AMGX_matrix_replace_coefficients(m, n, nnz, data_ptr, diag_data_ptr)
     return m
 end
 
 function amgx_nnz(matrix)
     nnz_ptr = Ref{Cint}()
-    @checked API.AMGX_matrix_get_nnz(matrix.handle, nnz_ptr)
+    @checked API.AMGX_matrix_get_nnz(matrix, nnz_ptr)
     return Int(nnz_ptr[])
 end
 

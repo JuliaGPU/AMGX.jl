@@ -110,6 +110,51 @@ using AMGX: Config, Resources, AMGXVector, AMGXMatrix, Solver, dDDI, dFFI
         @test AMGX.get_iteration_residual(s) < 1e-14
         @test AMGX.get_iteration_residual(s, niter) == AMGX.get_iteration_residual(s)
     end
+
+    # AMGX's solve with a zero initial guess assumes `sol` already holds n
+    # zeros (NVIDIA/AMGX#80): reusing `sol` returned its old contents plus
+    # A \ rhs, and an unsized `sol` was an illegal memory access.
+    n = 50
+    A = spdiagm(-1 => fill(-1.0, n - 1), 0 => fill(2.0, n), 1 => fill(-1.0, n - 1))
+    pcg = "config_version=2, solver(s)=PCG, s:max_iters=1000, s:tolerance=1e-12, " *
+          "s:convergence=RELATIVE_INI_CORE, s:monitor_residual=1, s:preconditioner=NOSOLVER"
+    rhs(k) = (b = zeros(n); b[1] = -1.0; b[n - k] = 1.0; b)
+
+    @scope @testset "zero initial guess with a reused sol" begin
+        c = @! Config(pcg)
+        r = @! Resources(c)
+        M = @! AMGXMatrix(r, mode)
+        x = @! AMGXVector(r, mode)
+        b = @! AMGXVector(r, mode)
+        s = @! Solver(r, mode, c)
+
+        # A is symmetric, so its CSC arrays are its CSR arrays.
+        AMGX.upload!(M, Cint.(A.colptr .- 1), Cint.(A.rowval .- 1), A.nzval)
+        AMGX.setup!(s, M)
+        AMGX.upload!(x, ones(n))
+        for k in 1:3
+            AMGX.upload!(b, rhs(k))
+            AMGX.solve!(x, s, b; zero_inital_guess=true)
+            @test AMGX.get_status(s) == AMGX.SUCCESS
+            @test AMGX.download(x) ≈ A \ rhs(k)
+        end
+    end
+
+    @scope @testset "zero initial guess with an unsized sol" begin
+        c = @! Config(pcg)
+        r = @! Resources(c)
+        M = @! AMGXMatrix(r, mode)
+        x = @! AMGXVector(r, mode)
+        b = @! AMGXVector(r, mode)
+        s = @! Solver(r, mode, c)
+
+        AMGX.upload!(M, Cint.(A.colptr .- 1), Cint.(A.rowval .- 1), A.nzval)
+        AMGX.setup!(s, M)
+        AMGX.upload!(b, rhs(1))
+        AMGX.solve!(x, s, b; zero_inital_guess=true)
+        @test AMGX.get_status(s) == AMGX.SUCCESS
+        @test AMGX.download(x) ≈ A \ rhs(1)
+    end
 end
 
 end # module

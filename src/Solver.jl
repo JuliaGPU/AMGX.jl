@@ -95,7 +95,8 @@ end
 
 Solve `A * sol = rhs`, where `A` is the matrix bound by [`setup!`](@ref), writing
 the result into `sol`. The current contents of `sol` are used as the initial
-guess unless `zero_inital_guess` is `true`.
+guess unless `zero_inital_guess` is `true`, in which case `sol` is first set
+to zeros of the matrix size and need not have been sized or filled.
 
 Note that a solve that does not converge is *not* an error: check
 [`get_status`](@ref) afterwards.
@@ -103,6 +104,13 @@ Note that a solve that does not converge is *not* an error: check
 function solve!(sol::AMGXVector, solver::Solver, rhs::AMGXVector; zero_inital_guess::Bool=false)
     solver.bound_matrix === nothing && error("no matrix attached to solver")
     if zero_inital_guess
+        # AMGX's zero-initial-guess solve assumes, but does not ensure, that
+        # `sol` already holds zeros of the right size (NVIDIA/AMGX#80): a
+        # reused `sol` came back as its old contents plus the solution, and an
+        # unsized one was an illegal memory access.
+        matrix = solver.bound_matrix
+        n, block_dims = GC.@preserve matrix matrix_get_size(matrix.handle)
+        set_zero!(sol, n; block_dim = block_dims[2])
         @checked API.AMGX_solver_solve_with_0_initial_guess(solver, rhs, sol)
     else
         @checked API.AMGX_solver_solve(solver, rhs, sol)
